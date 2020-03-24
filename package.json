@@ -18,7 +18,6 @@
   },
   "homepage": "https://github.com/exokitxr/metaassembly#readme",
   "dependencies": {
-    "express": "^4.17.1",
-    "ws": "^7.2.3"
+    "express": "^4.17.1"
   }
 }
