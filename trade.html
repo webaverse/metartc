@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+<head>
+<style>
+* {
+  box-sizing: border-box;
+}
+html, body {
+  width: 2048px;
+  height: 1024px;
+  margin: 0;
+  font-family: monospace;
+}
+body {
+  display: flex;
+}
+h1 {
+  margin: 0;
+  margin-bottom: 20px;
+  font-size: 30px;
+}
+.label {
+  font-size: 1em;
+  color: #808080;
+}
+.box {
+  display: inline-flex;
+  height: 100%;
+  margin: 0 20px;
+  padding: 0 20px;
+  background-color: #E8E8E8;
+  border-radius: 10px;
+  font-size: 4em;
+  line-height: 1;
+  align-items: center;
+}
+.buttons {
+  display: flex;
+  margin: 0 10px
+}
+.buttons.vertical {
+  flex-direction: column;
+  align-items: flex-start
+}
+.button {
+  margin-right: 10px;
+  margin-bottom: 10px;
+  padding: 10px 20px;
+  background-color: #42a5f5;
+  border-radius: 10px;
+  color: #FFF;
+  font-size: 1.5em;
+}
+.button.secondary {
+  background-color: #ef5350;
+}
+.button.tertiary {
+  background-color: #66bb6a;
+}
+.button.dim {
+  background-color: transparent;
+  color: #000;
+  border: 2px solid;
+}
+
+a {
+  display: block;
+}
+.source {
+  padding: 20px;
+  background-color: #000;
+  color: #FFF;
+  font-size: 23px;
+}
+.placeholder {
+  margin: 20px;
+  font-size: 23px;
+}
+.selector {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80px;
+  font-size: 50px;
+}
+.selector > .value {
+  margin-right: 10px;
+}
+.minibuttons {
+  display: flex;
+  margin: 10px;
+  justify-content: space-between;
+}
+.minibutton {
+  padding: 8px;
+  background-color: #EEE;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.addresses {
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+.addresses > .address.selected {
+  background-color: #000;
+  color: #FFF;
+}
+section {
+  position: relative;
+  margin: 0 10px;
+  flex: 1;
+  background-color: #FFF;
+  overflow: hidden;
+}
+section.left {
+  border-top-left-radius: 30px;
+}
+section.right {
+  border-top-right-radius: 30px;
+}
+section.middle {
+  padding: 20px;
+  flex: none;
+  border: 3px solid;
+  border-radius: 10px;
+}
+</style>
+</head>
+<body>
+
+<section class=left {{^dstAddress}}style="visibility: hidden;"{{/dstAddress}}>
+  <div class="source left">{{srcAddress}} (you)</div>
+  <div class=selector>
+    <span class=value>{{srcValue}}</span>
+    <span class=token>ETH</span>
+  </div>
+  {{^srcLockedIn}}
+  <div class=minibuttons>
+    <a class=minibutton id="add--0.00001">-0.00001</a>
+    <a class=minibutton id="add--0.0001">-0.0001</a>
+    <a class=minibutton id="add--0.001">-0.001</a>
+    <a class=minibutton id="add--0.01">-0.01</a>
+    <a class=minibutton id="add--0.1">-0.1</a>
+    <a class=minibutton id="add--1">-1</a>
+    <a class=minibutton id="add-0">0</a>
+    <a class=minibutton id="add-1">+1</a>
+    <a class=minibutton id="add-0.1">+0.1</a>
+    <a class=minibutton id="add-0.01">+0.01</a>
+    <a class=minibutton id="add-0.001">+0.001</a>
+    <a class=minibutton id="add-0.0001">+0.0001</a>
+    <a class=minibutton id="add-0.00001">+0.00001</a>
+  </div>
+  {{/srcLockedIn}}
+  <div class=buttons>
+    {{^srcLockedIn}}<a class=button id=lock>Lock in</a>{{/srcLockedIn}}
+    {{#srcLockedIn}}<a class="button dim" id=unlock>Locked in; click to unlock</a>{{/srcLockedIn}}
+  </div>
+</section>
+<section class=middle>
+  {{^srcAddress}}
+  <h1>Unlock wallet to trade.</h1>
+  {{/srcAddress}}
+  {{#srcAddress}}
+  {{^dstAddress}}
+  <h1>Trade with...</h1>
+  <div class=addresses>
+    {{#addresses}}<a class=address id="address-{{.}}">{{.}}</a>{{/addresses}}
+  </div>
+  {{/dstAddress}}
+  {{#dstAddress}}
+  <h1>Trade in progress</h1>
+  <div class="buttons vertical">
+    <a class="button secondary" id=cancel-trade>Cancel</a>
+    {{#allLockedIn}}<a class="button tertiary" id=confirm-trade>Confirm</a>{{/allLockedIn}}
+  </div>
+  {{/dstAddress}}
+  {{/srcAddress}}
+</div>
+</section>
+<section class=right {{^dstAddress}}style="visibility: hidden;"{{/dstAddress}}>
+  <div class="source right">{{dstAddress}} (them)</div>
+  <div class=placeholder>Other player is not currently trading. You can still send.</div>
+  <!-- <div class=selector>
+    <span class=value>{{dstValue}}</span>
+    <span class=token>ETH</span>
+  </div>
+  <div class=buttons>
+    {{^dstLockedIn}}<a class="button dim" id=confirm>Waiting...</a>{{/dstLockedIn}}
+    {{#dstLockedIn}}<a class="button dim" id=confirm>Locked in</a>{{/dstLockedIn}}
+  </div> -->
+</section>
+
+</body>
+</html>

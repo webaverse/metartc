@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+<style>
+* {
+  box-sizing: border-box;
+}
+html, body {
+  width: 2048px;
+  height: 512px;
+  margin: 0;
+}
+.users {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background-color: #FFF;
+}
+.users .user,
+.buttons
+{
+  display: flex;
+  flex-direction: column;
+  font-family: monospace;
+}
+.users .user {
+  width: 512px;
+  height: 512px;
+  background-color: #000;
+  font-size: 3em;
+}
+.users .user .name {
+  display: flex;
+  height: 50px;
+  color: #FFF;
+  justify-content: center;
+  align-items: center;
+}
+.users .user .img {
+}
+.buttons {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px;
+  flex-direction: column;
+}
+.buttons .button {
+  margin-bottom: 10px;
+  padding: 10px 20px;
+  background-color: #42a5f5;
+  border-radius: 10px;
+  color: #FFF;
+  font-size: 2em;
+}
+</style>
+</head>
+<body>
+
+<div class=users>
+  {{#users}}
+  <div class=user>
+    <span class=name>{{.}}</span>
+    <div class=img></div>
+  </div>
+  {{/users}}
+  <div class=buttons>
+    <a class=button id=microphone>Microphone</a>
+    <a class=button id=screenshare>Screenshare</a>
+  </div>
+</body>
+</html>

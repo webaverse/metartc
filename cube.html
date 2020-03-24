@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+<script src="three.js"></script>
+<script src="BufferGeometryUtils.js"></script>
+<style>
+body {
+  margin: 0;
+}
+.body {
+  display: flex;
+}
+.body section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  white-space: nowrap;
+}
+h1, .body section {
+  padding: 0 30px;
+}
+a {
+  text-decoration: underline;
+  color: #64b5f6;
+  cursor: pointer;
+}
+a:active {
+  color: #1e88e5;
+}
+#canvas-2d {
+  position: absolute;
+  // pointer-events: none;
+  display: none;
+}
+</style>
+</head>
+<body>
+  <h1>Cube</h1>
+  <canvas id=canvas-2d></canvas>
+<script>
+
+const _fakeXrChrome = {
+  async request() {},
+};
+const xrc = () => window.xrchrome ? window.xrchrome : _fakeXrChrome;
+
+window.addEventListener('load', () => {
+  const canvas2d = document.getElementById('canvas-2d');
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    canvas: canvas2d,
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.setClearAlpha(0);
+  // renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.xr.enabled = true;
+  
+  const scene = new THREE.Scene();
+  const camera = new THREE.Camera();
+
+  const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 2);
+  directionalLight.position.set(1, 1, 1);
+  scene.add(directionalLight);
+  const ambientLight = new THREE.AmbientLight(0x808080);
+  scene.add(ambientLight);
+
+  const cubeMesh = (() => {
+    const geometry = new THREE.BoxBufferGeometry(0.2, 0.2, 0.2);
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x5c6bc0,
+    });
+    return new THREE.Mesh(geometry, material);
+  })();
+  cubeMesh.position.set(0, 1.5, -1);
+  cubeMesh.frustumCulled = false;
+  scene.add(cubeMesh);
+
+  renderer.setAnimationLoop(render);
+  function render() {
+    cubeMesh.rotation.x += 0.01;
+    cubeMesh.rotation.z += 0.01;
+
+    renderer.render(scene, camera);
+  }
+
+  {
+    let currentSession = null;
+
+    function onSessionStarted( session ) {
+      session.addEventListener( 'end', onSessionEnded);
+      renderer.xr.setSession(session);
+      currentSession = session;
+    }
+
+    function onSessionEnded(/*event*/) {
+      currentSession.removeEventListener('end', onSessionEnded);
+      currentSession = null;
+    }
+    
+    navigator.xr.addEventListener('activate', () => {
+      const sessionInit = {optionalFeatures: ['local-floor', 'bounded-floor']};
+      navigator.xr.requestSession('immersive-vr', sessionInit ).then( onSessionStarted);
+    }, {once: true});
+  }
+});
+
+</script>
+</body>
+</html>

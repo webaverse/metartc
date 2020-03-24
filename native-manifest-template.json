@@ -1,0 +1,9 @@
+{
+  "name": "com.exokit.xrchrome",
+  "description": "XR Chrome",
+  "path": "",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://glmgcjligejadkfhgebnplablaggjbmm/"
+  ]
+}
