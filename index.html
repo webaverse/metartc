@@ -876,15 +876,15 @@ const tradeUiModels = (() => {
   const meshes = [];
 
   [
-    /* 'models/battleroyale/SM_Generic_Tree_03.glb',
+    'models/battleroyale/SM_Generic_Tree_03.glb',
     'models/scifi/SM_Wep_MachinePistol_Gen1_01.glb',
     'models/scifi/SM_Wep_Sword_01.glb',
-    'models/parcel-223.gltf', */
+    'models/parcel-223.gltf',
     'models/model10.vrm',
-    /* 'models/battleroyale/SM_Chr_Attach_GasMask_01.glb',
+    'models/battleroyale/SM_Chr_Attach_GasMask_01.glb',
     'models/battleroyale/SM_Wep_Pickaxe_01.glb',
     'models/dungeon/SM_Item_Coins_04.glb',
-    'models/homespace_empty.gltf', */
+    'models/homespace_empty.gltf',
   ].forEach((name, i) => {
     // console.log('loading', name);
     const loader = new GLTFLoader();
@@ -1431,14 +1431,9 @@ document.getElementById('lock-wallet-button').addEventListener('click', e => {
 
 // engine
 
-const socket = new WebSocket(`ws://localhost:3000/`);
+/* const socket = new WebSocket(`ws://localhost:3000/`);
 socket.onopen = async () => {
   console.log('socket open', socket);
-
-  /* const result = await socket.request('test', [
-    new ArrayBuffer(8)
-  ]);
-  console.log('got result', result); */
 };
 socket.binaryType = 'arraybuffer';
 const cbs = [];
@@ -1500,7 +1495,7 @@ socket.request = async (method, args) => {
     socket.send(bins[i]);
   }
   return await p;
-};
+}; */
 
 const _getImageData = (() => {
   const canvas = document.createElement('canvas');
@@ -1628,7 +1623,7 @@ mirrorTextureMesh.position.set(-0.5 + 1/4/2, 0, 0.001);
 mirrorTextureMesh.scale.set(1/4, (512-50*2)/512, 1);
 hudUiMesh.add(mirrorTextureMesh);
 
-handleMirrorTexture = (() => {
+/* handleMirrorTexture = (() => {
   let running = false;
   const _getImg = d => {
     const p = makePromise();
@@ -1659,7 +1654,7 @@ handleMirrorTexture = (() => {
       });
     }
   };
-})();
+})(); */
 
 let capturing = false;
 /* document.getElementById('start-capture-button').addEventListener('click', async e => {
