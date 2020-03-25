@@ -114,7 +114,7 @@ import {OrbitControls} from './OrbitControls.js';
 import {GLTFLoader} from './GLTFLoader.js';
 // import {GLTFExporter} from './GLTFExporter.js';
 // import {XRControllerModelFactory} from './XRControllerModelFactory.js';
-import {makeId, listRooms, XRChannelConnection} from './multiplayer.js';
+import {makeId, XRChannelConnection} from './multiplayer.js';
 import {initLocalRig, updatePlayerFromCamera, updatePlayerFromXr, updatePlayerFromArrays, updatePlayerDefault, getRigBoneTexture, bindPeerConnection} from './peerconnection.js';
 
 const network = 'rinkeby';
@@ -1133,6 +1133,11 @@ const _setDisconnected = () => {
   _clearMultiplayerClasses();
   wristUiMesh.setConnected(false);
 };
+async function listRooms() {
+  const res = await fetch('https://presence.exokit.org/channels');
+  const j = await res.json();
+  return j;
+}
 document.getElementById('rooms-button').addEventListener('click', async e => {
   const rooms = await listRooms();
   const roomsEl = document.getElementById('rooms');
