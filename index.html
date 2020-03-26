@@ -440,25 +440,15 @@ Array.from(tools).forEach((tool, i) => {
           console.warn(err);
         }
       } else {
-        disableMicButton.addEventListener('click', async () => {
-          rig.setMicrophoneMediaStream(null);
-          if (channelConnection) {
-            channelConnection.setMicrophoneMediaStream(null);
-          }
-          microphoneMediaStream.getAudioTracks().forEach(track => {
-            track.stop();
-          });
-
-          microphoneMediaStream = null;
-
-          /* try {
-            await navigator.permissions.revoke({
-              name: 'microphone',
-            });
-          } catch(err) {
-            console.warn(err);
-          } */
+        rig.setMicrophoneMediaStream(null);
+        if (channelConnection) {
+          channelConnection.setMicrophoneMediaStream(null);
+        }
+        microphoneMediaStream.getAudioTracks().forEach(track => {
+          track.stop();
         });
+
+        microphoneMediaStream = null;
       }
     } else if (newTool === 'screenshare') {
       tool.classList.toggle('selected');
