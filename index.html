@@ -323,8 +323,9 @@ const keys = {
 const tools = document.querySelectorAll('.tool');
 const cameraToolNames = ['orbit', 'firstperson', 'thirdperson'];
 const hudToolNames = ['hud', 'trade'];
+let microphoneMediaStream = null;
 Array.from(tools).forEach((tool, i) => {
-  tool.addEventListener('click', e => {
+  tool.addEventListener('click', async e => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -415,6 +416,41 @@ Array.from(tools).forEach((tool, i) => {
     } else if (newTool === 'microphone') {
       tool.classList.toggle('selected');
       console.log('start mic');
+      
+      if (tool.classList.contains('selected')) {
+        try {
+          microphoneMediaStream  = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+
+          rig.setMicrophoneMediaStream(microphoneMediaStream);
+          if (channelConnection) {
+            channelConnection.setMicrophoneMediaStream(microphoneMediaStream);
+          }
+        } catch (err) {
+          console.warn(err);
+        }
+      } else {
+        disableMicButton.addEventListener('click', async () => {
+          rig.setMicrophoneMediaStream(null);
+          if (channelConnection) {
+            channelConnection.setMicrophoneMediaStream(null);
+          }
+          microphoneMediaStream.getAudioTracks().forEach(track => {
+            track.stop();
+          });
+
+          microphoneMediaStream = null;
+
+          /* try {
+            await navigator.permissions.revoke({
+              name: 'microphone',
+            });
+          } catch(err) {
+            console.warn(err);
+          } */
+        });
+      }
     } else if (newTool === 'screenshare') {
       tool.classList.toggle('selected');
 
