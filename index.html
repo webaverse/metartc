@@ -123,6 +123,15 @@ const rpcUrl = `https://${network}.infura.io/v3/${infuraApiKey}`;
 const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 window.web3 = web3;
 
+function parseQuery(queryString) {
+  var query = {};
+  var pairs = (queryString[0] === '?' ? queryString.substr(1) : queryString).split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    var pair = pairs[i].split('=');
+    query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+  }
+  return query;
+}
 function makePromise() {
   let accept, reject;
   const p = new Promise((a, r) => {
@@ -2004,6 +2013,15 @@ window.addEventListener('resize', e => {
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
 });
+
+{
+  const q = parseQuery(window.location.search);
+  const {r} = q;
+  if (r) {
+    document.getElementById('room-code-input').value = r;
+    document.getElementById('connect-button').click();
+  }
+}
 
 </script>
 </body>
