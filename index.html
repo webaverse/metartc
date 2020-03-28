@@ -817,7 +817,7 @@ const tradeUiMesh = (() => {
         const gasPrice = await web3.eth.getGasPrice();
         const rawTx = {
           to: dstAddress,
-          srcValue: srcValue * 1e18,
+          value: srcValue * 1e18,
           gasPrice,
           gas: 0,
           nonce,
