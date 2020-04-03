@@ -116,12 +116,16 @@ import {GLTFLoader} from './GLTFLoader.js';
 // import {XRControllerModelFactory} from './XRControllerModelFactory.js';
 import {makeId, XRChannelConnection} from './multiplayer.js';
 import {initLocalRig, updatePlayerFromCamera, updatePlayerFromXr, updatePlayerFromArrays, updatePlayerDefault, getRigBoneTexture, bindPeerConnection} from './peerconnection.js';
+import address from 'https://contracts.webaverse.com/address.js';
+import abi from 'https://contracts.webaverse.com/abi.js';
 
+const apiHost = `https://ipfs.exokit.org/ipfs`;
 const network = 'rinkeby';
 const infuraApiKey = '4fb939301ec543a0969f3019d74f80c2';
 const rpcUrl = `https://${network}.infura.io/v3/${infuraApiKey}`;
 const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
-window.web3 = web3;
+// window.web3 = web3;
+const contract = new web3.eth.Contract(abi, address);
 
 function parseQuery(queryString) {
   var query = {};
@@ -859,117 +863,117 @@ const tradeUiModels = (() => {
   
   const meshes = [];
 
-  [
-    'models/battleroyale/SM_Generic_Tree_03.glb',
-    'models/scifi/SM_Wep_MachinePistol_Gen1_01.glb',
-    'models/scifi/SM_Wep_Sword_01.glb',
-    'models/parcel-223.gltf',
-    'models/model10.vrm',
-    'models/battleroyale/SM_Chr_Attach_GasMask_01.glb',
-    'models/battleroyale/SM_Wep_Pickaxe_01.glb',
-    'models/dungeon/SM_Item_Coins_04.glb',
-    'models/homespace_empty.gltf',
-  ].forEach((name, i) => {
-    // console.log('loading', name);
-    const loader = new GLTFLoader();
-    loader.load(name, o => {
-      // console.log('load ok', object);
-      
-      const model = o.scene;
-      const box = new THREE.Box3();
-      box.setFromObject(model);
-      const originalScale = model.scale.clone();
-      const size = box.getSize(new THREE.Vector3());
-      const scaleFactor = modelSize / Math.max(size.x, size.y, size.z);
-      model.scale.multiplyScalar(scaleFactor);
-      model.updateMatrixWorld();
-      box.setFromObject(model);
-      const positionOffset = box.getCenter(new THREE.Vector3()).multiplyScalar(-1);
-      model.position.add(positionOffset);
-      
-      const object = new THREE.Object3D();
-      object.add(model);
+  (async () => {
+    let nonce = await contract.methods.getNonce().call();
+    nonce = parseInt(nonce, 10);
 
-      object.visible = false;
-      object.bound = true;
-      const menuPosition = new THREE.Vector3();
-      object.alignToMenu = () => {
-        menuPosition.set(-uiWorldWidth/2 + modelSize/2 + i*modelSize, -uiWorldHeight/2 - modelSize/2, modelSize/2);
+    for (let i = 1; i <= nonce; i++) {
+      const metadataHash = await contract.methods.getMetadata(i, 'hash').call();
+      const metadata = await fetch(`${apiHost}/${metadataHash}`)
+        .then(res => res.json());
+      const {dataHash, screenshotHash, modelHash} = metadata;
 
-        if (object.bound) {
-          object.position.copy(menuPosition);
-          object.quaternion.set(0, 0, 0, 1);
-          object.scale.set(1, 1, 1);
-          object.updateMatrix();
-          
-          object.matrix
-            .premultiply(
-              new THREE.Matrix4().compose(hudUiMesh.position, hudUiMesh.quaternion, new THREE.Vector3(1, 1, 1))
-            )
-            .decompose(object.position, object.quaternion, object.scale);
-        }
+      console.log('loading', `${apiHost}/${modelHash}.glb`);
+      const loader = new GLTFLoader();
+      loader.load(`${apiHost}/${modelHash}.glb`, o => {
+        console.log('load ok', o);
         
-        menuPosition.applyMatrix4(new THREE.Matrix4().compose(hudUiMesh.position, hudUiMesh.quaternion, new THREE.Vector3(1, 1, 1)));
-      };
+        const model = o.scene;
+        const box = new THREE.Box3();
+        box.setFromObject(model);
+        const originalScale = model.scale.clone();
+        const size = box.getSize(new THREE.Vector3());
+        const scaleFactor = modelSize / Math.max(size.x, size.y, size.z);
+        model.scale.multiplyScalar(scaleFactor);
+        model.updateMatrixWorld();
+        box.setFromObject(model);
+        const positionOffset = box.getCenter(new THREE.Vector3()).multiplyScalar(-1);
+        model.position.add(positionOffset);
+        
+        const object = new THREE.Object3D();
+        object.add(model);
 
-      let grabberIndex = -1;
-      const grabStartMatrix = new THREE.Matrix4();
-      const grabStartControllerMatrix = new THREE.Matrix4();
-      object.use = async () => {
-        if (grabberIndex !== -1) {
-          if (/vrm/.test(name)) {
-            await setLocalRig(name)
-              .then(newRig => {
-                rig.model.parent && rig.model.parent.remove(rig.model);
+        object.visible = false;
+        object.bound = true;
+        const menuPosition = new THREE.Vector3();
+        object.alignToMenu = () => {
+          menuPosition.set(-uiWorldWidth/2 + modelSize/2 + i*modelSize, -uiWorldHeight/2 - modelSize/2, modelSize/2);
 
-                rig = newRig;
-                if (cameraMode === 'firstperson' || currentSession) {
-                  rig.decapitate();
-                }
-                container.add(rig.model);
-              });
-          }
-          object.parent.remove(object);
-        }
-      };
-      object.grab = gi => {
-        const controllerGrip = renderer.xr.getControllerGrip(gi);
-        if (controllerGrip.position.distanceTo(object.position) < (object.bound ? modelSize/2 : modelSize)) {
-          grabberIndex = gi;
-          grabStartMatrix.copy(object.matrix);
-          grabStartControllerMatrix.copy(controllerGrip.matrix);
-        }
-      };
-      object.ungrab = gi => {
-        if (grabberIndex === gi) {
-          grabberIndex = -1;
-        }
-      };
-      object.update = () => {
-        if (grabberIndex !== -1) {
-          const controllerGrip = renderer.xr.getControllerGrip(grabberIndex);
-          object.matrix
-            .copy(grabStartMatrix)
-            .premultiply(new THREE.Matrix4().getInverse(grabStartControllerMatrix))
-            .premultiply(controllerGrip.matrix)
-            .decompose(object.position, object.quaternion, object.scale);
-
-          object.bound = hudUiMesh.visible && object.position.distanceTo(menuPosition) < modelSize;
-          model.scale.copy(originalScale);
           if (object.bound) {
-            model.scale.multiplyScalar(scaleFactor);
+            object.position.copy(menuPosition);
+            object.quaternion.set(0, 0, 0, 1);
+            object.scale.set(1, 1, 1);
+            object.updateMatrix();
+            
+            object.matrix
+              .premultiply(
+                new THREE.Matrix4().compose(hudUiMesh.position, hudUiMesh.quaternion, new THREE.Vector3(1, 1, 1))
+              )
+              .decompose(object.position, object.quaternion, object.scale);
           }
-        }
-      };
+          
+          menuPosition.applyMatrix4(new THREE.Matrix4().compose(hudUiMesh.position, hudUiMesh.quaternion, new THREE.Vector3(1, 1, 1)));
+        };
 
-      scene.add(object);
-      meshes.push(object);
-    }, xhr => {
-      // console.log('progress');
-    }, err => {
-      console.warn('load error', err);
-    });
-  });
+        let grabberIndex = -1;
+        const grabStartMatrix = new THREE.Matrix4();
+        const grabStartControllerMatrix = new THREE.Matrix4();
+        object.use = async () => {
+          if (grabberIndex !== -1) {
+            if (/vrm/.test(name)) {
+              await setLocalRig(name)
+                .then(newRig => {
+                  rig.model.parent && rig.model.parent.remove(rig.model);
+
+                  rig = newRig;
+                  if (cameraMode === 'firstperson' || currentSession) {
+                    rig.decapitate();
+                  }
+                  container.add(rig.model);
+                });
+            }
+            object.parent.remove(object);
+          }
+        };
+        object.grab = gi => {
+          const controllerGrip = renderer.xr.getControllerGrip(gi);
+          if (controllerGrip.position.distanceTo(object.position) < (object.bound ? modelSize/2 : modelSize)) {
+            grabberIndex = gi;
+            grabStartMatrix.copy(object.matrix);
+            grabStartControllerMatrix.copy(controllerGrip.matrix);
+          }
+        };
+        object.ungrab = gi => {
+          if (grabberIndex === gi) {
+            grabberIndex = -1;
+          }
+        };
+        object.update = () => {
+          if (grabberIndex !== -1) {
+            const controllerGrip = renderer.xr.getControllerGrip(grabberIndex);
+            object.matrix
+              .copy(grabStartMatrix)
+              .premultiply(new THREE.Matrix4().getInverse(grabStartControllerMatrix))
+              .premultiply(controllerGrip.matrix)
+              .decompose(object.position, object.quaternion, object.scale);
+
+            object.bound = hudUiMesh.visible && object.position.distanceTo(menuPosition) < modelSize;
+            model.scale.copy(originalScale);
+            if (object.bound) {
+              model.scale.multiplyScalar(scaleFactor);
+            }
+          }
+        };
+
+        scene.add(object);
+        meshes.push(object);
+      }, xhr => {
+        // console.log('progress');
+      }, err => {
+        console.warn('load error', err);
+      });
+    }
+  })();
   
   return meshes;
 })();
