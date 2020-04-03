@@ -50,7 +50,7 @@ header .nav {
   white-space: nowrap;
 }
 header .nav:hover, header .nav.open {
-  border-bottom-color: #ef5350;
+  border-bottom-color: #81c784;
 }
 header .nav i {
   display: inline-block;
