@@ -1,0 +1,2023 @@
+<!doctype html>
+<html>
+<head>
+  <link href="index.css" rel=stylesheet>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/0735724151.js" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.9.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.9.2/firebase-database.js"></script>
+  <script src="https://rawcdn.githack.com/ethereum/web3.js/a6ddec59e65116853435f203b25cb9c55824d084/dist/web3.min.js"></script>
+  <script src="https://rawcdn.githack.com/ethereumjs/browser-builds/c31acaf66608f8176828b974ab50f2ea6308e7e1/dist/ethereumjs-tx/ethereumjs-tx-1.3.3.js"></script>
+  <script src="https://rawcdn.githack.com/ConsenSys/eth-lightwallet/d21df74dd2d5e09632bf38309f147784668b1498/dist/lightwallet.js"></script>
+</head>
+<body>
+  <header id=header>
+    <!-- <a href="https://browser.exokit.org">
+      <img class=icon src="logo.svg"/>
+    </a> -->
+    <a href="/" class="nav">竹ヨナムマイコ</a>
+    <a href="/" class="nav open">Home</a>
+    <a href="/room.html" class="nav">Room</a>
+    <div class="roomer disconnected">
+      <div class="connect-status disconnected">Offline</div>
+      <div class=button id=rooms-button>Rooms&nbsp;<i class="fa fa-chevron-down"></i></div>
+      <div class=button id=create-room-button>Create room</div>
+      <div class=button id=use-code-button>Use code</div>
+    </div>
+    <div class="roomer list">
+      <div class="connect-status disconnected">Choose room...</div>
+      <div class=button id=unrooms-button>Rooms&nbsp;<i class="fa fa-chevron-up"></i></div>
+      <div class=rooms id=rooms></div>
+    </div>
+    <div class="roomer dialog">
+      <input type=text id=room-code-input placeholder="Enter room code">
+      <div class=button id=connect-button>Connect</div>
+      <div class=button id=cancel-connect-button>Cancel</div>
+    </div>
+    <div class="roomer connected">
+      <div class=users><i class="fa fa-user"></i> <span id=user-count-text>1</span></div>
+      <div class=room-code>Room code: <span class=room-code-text id=room-code-text></span> Link: <a href="#" target="_blank" class=room-link id=room-link><i class="fa fa-external-link"></i></a></div>
+      <div class=button id=disconnect-button>Disconnect</div>
+    </div>
+    <div class=tools>
+      <a id=tool-1 class="tool selected" tool="orbit">
+        <i class="fal fa-camera"></i>
+        <div class=label>Camera tool</div>
+      </a>
+      <a id=tool-2 class="tool" tool="firstperson">
+        <i class="fal fa-eye"></i>
+        <div class=label>First person</div>
+      </a>
+      <a id=tool-3 class="tool" tool="thirdperson">
+        <i class="fal fa-walking"></i>
+        <div class=label>Third person</div>
+      </a>
+      <a id=tool-4 class="tool" tool="hud">
+        <i class="fal fa-browser"></i>
+        <div class=label>Hud</div>
+      </a>
+      <a id=tool-5 class="tool" tool="trade">
+        <i class="fal fa-exchange"></i>
+        <div class=label>Trade</div>
+      </a>
+      <a id=tool-6 class="tool" tool="microphone">
+        <i class="fal fa-microphone"></i>
+        <div class=label>Microphone</div>
+      </a>
+      <a id=tool-7 class="tool" tool="screenshare">
+        <i class="fal fa-video"></i>
+        <div class=label>Screenshare</div>
+      </a>
+    </div>
+    <div class="addressbook">
+      <input type=text class=address-input id=address-input placeholder="0x0000000000000000000000000000000000000000" autocomplete=fake>
+      <a class=button id=add-address-button>+ Add</a>
+      <div class=addresses id=addresses></div>
+    </div>
+    <div class="wallet none">
+      <div class=address>No wallet</div>
+      <div class=button id=import-key-button>Import key</div>
+      <div class=button id=create-wallet-button>Create wallet</div>
+    </div>
+    <div class="wallet import">
+      <input type=text id=seed-phrase-input placeholder="seed phrase">
+      <input type=password id=password-input placeholder="password">
+      <div class=button id=import-button>Log in</div>
+      <div class=button id=cancel-import-button>Cancel</div>
+    </div>
+    <div class="wallet locked">
+      <div class=address>Wallet locked</div>
+      <input type=password id=password-unlock-input placeholder="password">
+      <div class=button id=unlock-wallet-button>Unlock</div>
+      <div class=button id=forget-wallet-button>Forget</div>
+    </div>
+    <div class="wallet unlocked">
+      <div class=address id=address-text></div>
+      <div class=balance id=balance-text></div>
+      <div class=button id=download-key-button>D/L key</div>
+      <div class=button id=lock-wallet-button>Lock</div>
+    </div>
+    <div class="xr desktop">
+      <!-- <div class=button id=start-capture-button>Start Capture</div> -->
+      <div class=button id=enter-vr-button>Enter VR</div>
+      <!-- <div class=button id=enter-overlay-button>Enter Overlay</div> -->
+    </div>
+    <div class="xr vr">VR running</div>
+    <div class="xr overlay">Overlay running</div>
+  </header>
+  <canvas id=canvas></canvas>
+<script type=module>
+import THREE from './three.module.js';
+window.THREE = THREE;
+</script>
+<script type=module>
+import {OrbitControls} from './OrbitControls.js';
+import {GLTFLoader} from './GLTFLoader.js';
+// import {GLTFExporter} from './GLTFExporter.js';
+// import {XRControllerModelFactory} from './XRControllerModelFactory.js';
+import {makeId, XRChannelConnection} from './multiplayer.js';
+import {initLocalRig, updatePlayerFromCamera, updatePlayerFromXr, updatePlayerFromArrays, updatePlayerDefault, getRigBoneTexture, bindPeerConnection} from './peerconnection.js';
+import address from 'https://contracts.webaverse.com/address.js';
+import abi from 'https://contracts.webaverse.com/abi.js';
+
+const apiHost = `https://ipfs.exokit.org/ipfs`;
+const network = 'rinkeby';
+const infuraApiKey = '4fb939301ec543a0969f3019d74f80c2';
+const rpcUrl = `https://${network}.infura.io/v3/${infuraApiKey}`;
+const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
+// window.web3 = web3;
+const contract = new web3.eth.Contract(abi, address);
+
+function parseQuery(queryString) {
+  var query = {};
+  var pairs = (queryString[0] === '?' ? queryString.substr(1) : queryString).split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    var pair = pairs[i].split('=');
+    query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+  }
+  return query;
+}
+function makePromise() {
+  let accept, reject;
+  const p = new Promise((a, r) => {
+    accept = a;
+    reject = r;
+  });
+  p.accept = accept;
+  p.reject = reject;
+  return p;
+}
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  preserveDrawingBuffer: true,
+});
+renderer.autoClear = false;
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.sortObjects = false;
+renderer.physicallyCorrectLights = true;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.setClearColor(new THREE.Color(0xEEEEEE), 1);
+renderer.viewportEnabled = true;
+renderer.setViewport = (oldSetViewport => function setViewport() {
+  renderer.viewportEnabled && oldSetViewport.apply(this, arguments);
+})(renderer.setViewport);
+
+const scene = new THREE.Scene();
+// scene.background = new THREE.Color(0xEEEEEE);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0.5, 2);
+camera.rotation.order = 'YXZ';
+
+const ambientLight = new THREE.AmbientLight(0xFFFFFF);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 3);
+directionalLight.position.set(0.5, 1, 0.5).multiplyScalar(100);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.width = 1024;
+directionalLight.shadow.mapSize.height = 1024;
+directionalLight.shadow.camera.near = 0.5;
+directionalLight.shadow.camera.far = 500;
+scene.add(directionalLight);
+
+const directionalLight2 = new THREE.DirectionalLight(0xFFFFFF, 3);
+directionalLight2.position.set(-0.5, 0.1, 0.5).multiplyScalar(100);
+scene.add(directionalLight2);
+
+const container = new THREE.Object3D();
+scene.add(container);
+
+const orbitControls = new OrbitControls(camera, canvas, document);
+orbitControls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -1.5));
+orbitControls.screenSpacePanning = true;
+// orbitControls.enabled = !!loginToken;
+orbitControls.enableMiddleZoom = false;
+orbitControls.update();
+
+/* const defaultGltf = new THREE.Object3D();
+container.add(defaultGltf);
+const _loadDefaultGltf = () => {
+  const loader = new GLTFLoader();
+  loader.load('sketch.gltf', object => {
+    console.log('loaded object', object);
+    object = object.scene;
+
+    defaultGltf.add(object);
+    defaultGltf.position.set(-0.5, 0, -1);
+    defaultGltf.scale.setScalar(2);
+  }, xhr => {
+    // console.log('progress');
+  }, err => {
+    console.warn(err);
+  });
+};
+_loadDefaultGltf(); */
+
+let rig = null;
+let videoMediaStream = null;
+let currentSession = null;
+initLocalRig()
+  .then(newRig => {
+    rig = newRig;
+
+    if (cameraMode === 'firstperson' || currentSession) {
+      rig.decapitate();
+    }
+    container.add(rig.model);
+  });
+
+// tools
+
+const keys = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  shift: false,
+};
+(() => {
+  const w = window;
+  w.addEventListener('keydown', e => {
+    switch (e.which) {
+      case 49: // 1
+      case 50:
+      case 51: // 3
+      {
+        tools[e.which - 49].click();
+        break;
+      }
+      case 87: { // W
+        if (!document.pointerLockElement) {
+          // nothing
+        } else {
+          keys.up = true;
+        }
+        break;
+      }
+      case 65: { // A
+        if (!document.pointerLockElement) {
+          // nothing
+        } else {
+          keys.left = true;
+        }
+        break;
+      }
+      case 83: { // S
+        if (!document.pointerLockElement) {
+          // nothing
+        } else {
+          keys.down = true;
+        }
+        break;
+      }
+      case 68: { // D
+        if (!document.pointerLockElement) {
+          // nothing
+        } else {
+          keys.right = true;
+        }
+        break;
+      }
+      case 16: { // shift
+        if (document.pointerLockElement) {
+          keys.shift = true;
+        }
+        break;
+      }
+    }
+  });
+  w.addEventListener('keyup', e => {
+    switch (e.which) {
+      case 87: { // W
+        if (document.pointerLockElement) {
+          keys.up = false;
+        }
+        break;
+      }
+      case 65: { // A
+        if (document.pointerLockElement) {
+          keys.left = false;
+        }
+        break;
+      }
+      case 83: { // S
+        if (document.pointerLockElement) {
+          keys.down = false;
+        }
+        break;
+      }
+      case 68: { // D
+        if (document.pointerLockElement) {
+          keys.right = false;
+        }
+        break;
+      }
+      case 16: { // shift
+        if (document.pointerLockElement) {
+          keys.shift = false;
+        }
+        break;
+      }
+    }
+  });
+  w.addEventListener('mousemove', e => {
+    if (document.pointerLockElement) {
+      const {movementX, movementY} = e;
+      camera.rotation.y -= movementX * Math.PI*2*0.001;
+      camera.rotation.x -= movementY * Math.PI*2*0.001;
+    }
+  });
+})();
+
+const tools = document.querySelectorAll('.tool');
+const cameraToolNames = ['orbit', 'firstperson', 'thirdperson'];
+const hudToolNames = ['hud', 'trade'];
+let microphoneMediaStream = null;
+Array.from(tools).forEach((tool, i) => {
+  tool.addEventListener('click', async e => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const newTool = tool.getAttribute('tool');
+    if (cameraToolNames.includes(newTool)) {
+      if (newTool !== cameraMode) {
+        Array.from(tools).forEach(tool => {
+          if (cameraToolNames.includes(tool.getAttribute('tool'))) {
+            tool.classList.remove('selected');
+          }
+        });
+        cameraMode = newTool;
+        tool.classList.add('selected');
+      }
+    }
+
+    if (newTool === 'orbit') {
+      document.pointerLockElement && document.exitPointerLock();
+      orbitControls.enabled = true;
+    } else if (newTool === 'firstperson' || newTool === 'thirdperson') {
+      renderer.domElement.requestPointerLock();
+      camera.position.y = 1.2;
+      orbitControls.enabled = false;
+    } else if (newTool === 'hud') {
+      Array.from(tools).forEach(tool => {
+        if (hudToolNames.includes(tool.getAttribute('tool'))) {
+          tool.classList.remove('selected');
+        }
+      });
+      hudUiMesh.visible = !hudUiMesh.visible;
+      tradeUiMesh.visible = false;
+      tradeUiModels.forEach(m => {
+        m.visible = !m.bound || hudUiMesh.visible;
+      });
+
+      if (hudUiMesh.visible) {
+        const xrCamera = (() => {
+          if (currentSession) {
+            return renderer.xr.getCamera(camera).cameras[0];
+          } else {
+            return camera;
+          }
+        })();
+        hudUiMesh.position
+          .copy(xrCamera.position)
+          .add(new THREE.Vector3(0, 0, -0.5).applyQuaternion(xrCamera.quaternion));
+        hudUiMesh.quaternion.copy(xrCamera.quaternion)
+        hudUiMesh.updateMatrixWorld();
+        
+        tradeUiModels.forEach(m => {
+          m.bound && m.alignToMenu();
+        });
+
+        tool.classList.add('selected');
+      } else {
+        tool.classList.remove('selected');
+      }
+    } else if (newTool === 'trade') {
+      Array.from(tools).forEach(tool => {
+        if (hudToolNames.includes(tool.getAttribute('tool'))) {
+          tool.classList.remove('selected');
+        }
+      });
+      hudUiMesh.visible = false;
+      tradeUiMesh.visible = !tradeUiMesh.visible;
+      tradeUiModels.forEach(m => {
+        m.visible = !m.bound || hudUiMesh.visible;
+      });
+
+      if (tradeUiMesh.visible) {
+        const xrCamera = (() => {
+          if (currentSession) {
+            return renderer.xr.getCamera(camera).cameras[0];
+          } else {
+            return camera;
+          }
+        })();
+        tradeUiMesh.position
+          .copy(xrCamera.position)
+          .add(new THREE.Vector3(0, 0, -0.5).applyQuaternion(xrCamera.quaternion));
+        tradeUiMesh.quaternion.copy(xrCamera.quaternion)
+        tradeUiMesh.updateMatrixWorld();
+
+        tool.classList.add('selected');
+      } else {
+        tool.classList.remove('selected');
+      }
+    } else if (newTool === 'microphone') {
+      tool.classList.toggle('selected');
+      console.log('start mic');
+      
+      if (tool.classList.contains('selected')) {
+        try {
+          microphoneMediaStream  = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+
+          rig.setMicrophoneMediaStream(microphoneMediaStream);
+          if (channelConnection) {
+            channelConnection.setMicrophoneMediaStream(microphoneMediaStream);
+          }
+        } catch (err) {
+          console.warn(err);
+        }
+      } else {
+        rig.setMicrophoneMediaStream(null);
+        if (channelConnection) {
+          channelConnection.setMicrophoneMediaStream(null);
+        }
+        microphoneMediaStream.getAudioTracks().forEach(track => {
+          track.stop();
+        });
+
+        microphoneMediaStream = null;
+      }
+    } else if (newTool === 'screenshare') {
+      tool.classList.toggle('selected');
+
+      if (tool.classList.contains('selected')) {
+        videoMediaStream = mirrorTextureMesh.getTexture().captureStream();
+      } else {
+        videoMediaStream && videoMediaStream.getTracks().forEach(track => {
+          track.stop();
+        });
+        videoMediaStream = null;
+      }
+      channelConnection && channelConnection.setVideoMediaStream(videoMediaStream);
+    } else {
+      document.pointerLockElement && document.exitPointerLock();
+      orbitControls.enabled = false;
+    }
+    if (rig) {
+      if (newTool === 'firstperson' || currentSession) {
+        rig.decapitate();
+      } else {
+        rig.undecapitate();
+      }
+    }
+  });
+});
+document.addEventListener('pointerlockchange', e => {
+  if (!document.pointerLockElement) {
+    Array.from(tools).find(tool => tool.matches('.tool[tool=orbit]')).click();
+  }
+});
+let cameraMode = 'orbit';
+
+// interface
+
+const _makeUiMesh = ({uiWidth, uiHeight, uiWorldWidth, uiWorldHeight}) => {
+  const geometry = new THREE.PlaneBufferGeometry(1, 1);
+  const canvas = document.createElement('canvas');
+  canvas.width = uiWidth;
+  canvas.height = uiHeight;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.createImageData(uiWidth, uiHeight);
+  canvas.imageData = imageData;
+  const texture = new THREE.Texture(
+    canvas,
+    THREE.UVMapping,
+    THREE.ClampToEdgeWrapping,
+    THREE.ClampToEdgeWrapping,
+    THREE.LinearFilter,
+    THREE.LinearMipMapLinearFilter,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+    16,
+    THREE.LinearEncoding
+  );
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.DoubleSide,
+    transparent: true,
+    alphaTest: 0.1,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.scale.x = uiWorldWidth;
+  mesh.scale.y = uiWorldHeight;
+  mesh.frustumCulled = false;
+  
+  const highlightMesh = (() => {
+    const geometry = new THREE.BoxBufferGeometry(1, 1, 0.01);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x42a5f5,
+      transparent: true,
+      opacity: 0.5,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    return mesh;
+  })();
+  mesh.add(highlightMesh);
+
+  let anchors = [];
+  let hoveredAnchor = null;
+  mesh.update = async () => {
+    const result = await mesh.onupdate();
+    
+    imageData.data.set(result.data);
+    ctx.putImageData(imageData, 0, 0);
+    texture.needsUpdate = true;
+    
+    anchors = result.anchors;
+  };
+  mesh.intersect = uv => {
+    hoveredAnchor = null;
+    highlightMesh.visible = false;
+
+    if (uv) {
+      uv.y = 1 - uv.y;
+      uv.x *= uiWidth;
+      uv.y *= uiHeight;
+
+      for (let i = 0; i < anchors.length; i++) {
+        const anchor = anchors[i];
+        const {top, bottom, left, right, width, height} = anchor;
+        if (uv.x >= left && uv.x < right && uv.y >= top && uv.y < bottom) {
+          hoveredAnchor = anchor;
+          
+          highlightMesh.position.x = -0.5 + (left + width/2)/uiWidth;
+          highlightMesh.position.y = 0.5 - (top + height/2)/uiHeight;
+          highlightMesh.scale.x = width/uiWidth;
+          highlightMesh.scale.y = height/uiHeight;
+          highlightMesh.visible = true;
+          return true;
+          // break;
+        }
+      }
+    }
+    return false;
+  };
+  mesh.press = () => {
+    return mesh.visible ? mesh.onpress(hoveredAnchor) : false;
+  };
+  Promise.resolve().then(() => {
+    mesh.update();
+  });
+
+  return mesh;
+};
+const _makeUiRenderer = ({url, uiWidth, uiHeight}) => {
+  const loadPromise = Promise.all([
+    new Promise((accept, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.src = 'https://render.exokit.xyz/';
+      iframe.onload = () => {
+        accept(iframe);
+      };
+      iframe.onerror = err => {
+        reject(err);
+      };
+      iframe.setAttribute('frameborder', 0);
+      iframe.style.position = 'absolute';
+      iframe.style.width = `${uiWidth}px`;
+      iframe.style.height = `${uiHeight}px`;
+      iframe.style.top = '-4096px';
+      iframe.style.left = '-4096px';
+      document.body.appendChild(iframe);
+    }),
+    fetch(url)
+      .then(res => res.text()),
+  ]);
+
+  let renderIds = 0;
+  return {
+    async render(templateData) {
+      const [iframe, interfaceHtml] = await loadPromise;
+
+      if (renderIds > 0) {
+        iframe.contentWindow.postMessage({
+          method: 'cancel',
+          id: renderIds,
+        });
+      }
+
+      const start = Date.now();
+      const mc = new MessageChannel();
+      iframe.contentWindow.postMessage({
+        method: 'render',
+        id: ++renderIds,
+        htmlString: interfaceHtml,
+        templateData,
+        width: uiWidth,
+        height: uiHeight,
+        transparent: true,
+        port: mc.port2,
+      }, '*', [mc.port2]);
+      const result = await new Promise((accept, reject) => {
+        mc.port1.onmessage = e => {
+          const {data} = e;
+          const {error, result} = data;
+
+          if (result) {
+            console.log('time taken', Date.now() - start);
+
+            accept(result);
+          } else {
+            reject(error);
+          }
+        };
+      });
+      return result;
+    },
+  };
+};
+const wristUiMesh = (() => {
+  const uiWidth = 800;
+  const uiHeight = 400;
+  const uiWorldWidth = 0.2;
+  const uiWorldHeight = uiWorldWidth * uiHeight/uiWidth;
+
+  const mesh = _makeUiMesh({
+    uiWidth,
+    uiHeight,
+    uiWorldWidth,
+    uiWorldHeight,
+  });
+  const renderer = _makeUiRenderer({
+    url: 'keyboard.html',
+    uiWidth,
+    uiHeight,
+  });
+
+  let text = '';
+  let connected = false;
+  let hudEnabled = false;
+  let tradeEnabled = false;
+  mesh.setConnected = c => {
+    connected = c;
+    if (!c) {
+      text = '';
+    }
+    mesh.update();
+  };
+  mesh.setText = t => {
+    text = t;
+    mesh.update();
+  };
+  mesh.onupdate = () => {
+    let t = text;
+    while (t.length < 4) {
+      t += '-';
+    }
+    const p = renderer.render({
+      text: t,
+      connected,
+      hudEnabled,
+      tradeEnabled,
+    });
+    /* p.then(result => {
+      if (wristObject) {
+        socket.request('updateObjectTexture', [
+          wristObject.id,
+          result.width,
+          result.height,
+          result.data,
+        ]);
+      }
+    }); */
+    return p;
+  };
+  mesh.onpress = hoveredAnchor => {
+    if (hoveredAnchor) {
+      const {id} = hoveredAnchor;
+      let match;
+      if (id === 'enter') {
+        document.getElementById('room-code-input').value = text;
+        document.getElementById('connect-button').click();
+      } else if (id === 'new') {
+        document.getElementById('create-room-button').click();
+      } else if (id === 'disconnect') {
+        document.getElementById('disconnect-button').click();
+      } else if (id === 'hud') {
+        document.querySelector('.tool[tool=hud]').click();
+      } else if (id === 'trade') {
+        document.querySelector('.tool[tool=trade]').click();
+      } else if (id && (match = id.match(/^key-([0-9]+)$/))) {
+        const n = parseInt(match[1], 10);
+        if (n === 8) {
+          text = text.slice(0, -1);
+          mesh.update();
+        } else {
+          if (text.length < 4) {
+            const c = String.fromCharCode(n);
+            text += c;
+            mesh.update();
+          }
+        }
+      }
+      return true;
+    } else {
+      return false;
+    }
+  };
+  return mesh;
+})();
+wristUiMesh.position.set(0, 0.5, 1);
+scene.add(wristUiMesh);
+
+const tradeUiMesh = (() => {
+  const uiWidth = 2048;
+  const uiHeight = 1024;
+  const uiWorldWidth = 2;
+  const uiWorldHeight = uiWorldWidth * uiHeight/uiWidth;
+
+  const mesh = _makeUiMesh({
+    uiWidth,
+    uiHeight,
+    uiWorldWidth,
+    uiWorldHeight,
+  });
+  const renderer = _makeUiRenderer({
+    url: 'trade.html',
+    uiWidth,
+    uiHeight,
+  });
+
+  let srcAddress = '';
+  let dstAddress = '';
+  let srcValue = 18.529731;
+  let dstValue = 0;
+  let srcLockedIn = false;
+  let dstLockedIn = true;
+  mesh.setSrcAddress = newSrcAddress => {
+    srcAddress = newSrcAddress;
+    mesh.update();
+  };
+  mesh.setDstAddress = newDstAddress => {
+    dstAddress = newDstAddress;
+    mesh.update();
+  };
+  mesh.onupdate = () => {
+    const p = renderer.render({
+      srcAddress,
+      dstAddress,
+      srcValue: srcValue.toFixed(5),
+      dstValue: dstValue.toFixed(5),
+      srcLockedIn,
+      dstLockedIn,
+      allLockedIn: srcLockedIn && dstLockedIn,
+      addresses,
+    });
+    /* p.then(result => {
+      if (tradeObject) {
+        socket.request('updateObjectTexture', [
+          tradeObject.id,
+          result.width,
+          result.height,
+          result.data,
+        ]);
+      }
+    }); */
+    return p;
+  };
+  mesh.onpress = async hoveredAnchor => {
+    if (hoveredAnchor) {
+      const {id} = hoveredAnchor;
+      let match;
+      if (id && (match = id.match(/^add-(-?[0-9\.]+)$/))) {
+        const n = parseFloat(match[1]);
+        if (n === 0) {
+          srcValue = 0;
+        } else {
+          srcValue = Math.max(srcValue + n, 0);
+        }
+        mesh.update();
+      } else if (id && (match = id.match(/^address-(0x[0-9a-f]+)$/i))) {
+        dstAddress = match[1];
+        mesh.update();
+      } else if (id === 'lock') {
+        srcLockedIn = true;
+        mesh.update();
+      } else if (id === 'unlock') {
+        srcLockedIn = false;
+        mesh.update();
+      } else if (id === 'confirm-trade') {
+        const address = `0x${keystore.addresses[0]}`;
+        const nonce = await web3.eth.getTransactionCount(address);
+        const gasPrice = await web3.eth.getGasPrice();
+        const rawTx = {
+          to: dstAddress,
+          value: srcValue * 1e18,
+          gasPrice,
+          gas: 0,
+          nonce,
+        };
+        rawTx.gas = await web3.eth.estimateGas(rawTx);
+        const serializedTx = new ethereumjs.Tx(rawTx).serialize();
+        const signed = await keystore.signTx(serializedTx);
+        web3.eth.sendSignedTransaction('0x' + signed).on('receipt', e => {
+          console.log('got tx receipt', e); // XXX
+        });
+        // mesh.update();
+      } else if (id === 'cancel-trade') {
+        dstAddress = '';
+        srcValue = 0;
+        dstValue = 0;
+        srcLockedIn = false;
+        mesh.update();
+      } else {
+        // nothing
+      }
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  return mesh;
+})();
+tradeUiMesh.position.set(0, 1, 0);
+tradeUiMesh.visible = false;
+scene.add(tradeUiMesh);
+
+const tradeUiModels = (() => {
+  const uiWidth = 2048;
+  const uiHeight = 512 + 50;
+  const uiWorldWidth = 1;
+  const uiWorldHeight = uiWorldWidth * uiHeight/uiWidth;
+  const modelSize = 0.15;
+  
+  const meshes = [];
+
+  (async () => {
+    let nonce = await contract.methods.getNonce().call();
+    nonce = parseInt(nonce, 10);
+
+    for (let i = 1; i <= nonce; i++) {
+      const metadataHash = await contract.methods.getMetadata(i, 'hash').call();
+      const metadata = await fetch(`${apiHost}/${metadataHash}`)
+        .then(res => res.json());
+      const {dataHash, screenshotHash, modelHash} = metadata;
+
+      console.log('loading', `${apiHost}/${modelHash}.glb`);
+      const loader = new GLTFLoader();
+      loader.load(`${apiHost}/${modelHash}.glb`, o => {
+        console.log('load ok', o);
+        
+        const model = o.scene;
+        const box = new THREE.Box3();
+        box.setFromObject(model);
+        const originalScale = model.scale.clone();
+        const size = box.getSize(new THREE.Vector3());
+        const scaleFactor = modelSize / Math.max(size.x, size.y, size.z);
+        model.scale.multiplyScalar(scaleFactor);
+        model.updateMatrixWorld();
+        box.setFromObject(model);
+        const positionOffset = box.getCenter(new THREE.Vector3()).multiplyScalar(-1);
+        model.position.add(positionOffset);
+        
+        const object = new THREE.Object3D();
+        object.add(model);
+
+        object.visible = false;
+        object.bound = true;
+        const menuPosition = new THREE.Vector3();
+        object.alignToMenu = () => {
+          menuPosition.set(-uiWorldWidth/2 + modelSize/2 + i*modelSize, -uiWorldHeight/2 - modelSize/2, modelSize/2);
+
+          if (object.bound) {
+            object.position.copy(menuPosition);
+            object.quaternion.set(0, 0, 0, 1);
+            object.scale.set(1, 1, 1);
+            object.updateMatrix();
+            
+            object.matrix
+              .premultiply(
+                new THREE.Matrix4().compose(hudUiMesh.position, hudUiMesh.quaternion, new THREE.Vector3(1, 1, 1))
+              )
+              .decompose(object.position, object.quaternion, object.scale);
+          }
+          
+          menuPosition.applyMatrix4(new THREE.Matrix4().compose(hudUiMesh.position, hudUiMesh.quaternion, new THREE.Vector3(1, 1, 1)));
+        };
+
+        let grabberIndex = -1;
+        const grabStartMatrix = new THREE.Matrix4();
+        const grabStartControllerMatrix = new THREE.Matrix4();
+        object.use = async () => {
+          if (grabberIndex !== -1) {
+            if (/vrm/.test(name)) {
+              await setLocalRig(name)
+                .then(newRig => {
+                  rig.model.parent && rig.model.parent.remove(rig.model);
+
+                  rig = newRig;
+                  if (cameraMode === 'firstperson' || currentSession) {
+                    rig.decapitate();
+                  }
+                  container.add(rig.model);
+                });
+            }
+            object.parent.remove(object);
+          }
+        };
+        object.grab = gi => {
+          const controllerGrip = renderer.xr.getControllerGrip(gi);
+          if (controllerGrip.position.distanceTo(object.position) < (object.bound ? modelSize/2 : modelSize)) {
+            grabberIndex = gi;
+            grabStartMatrix.copy(object.matrix);
+            grabStartControllerMatrix.copy(controllerGrip.matrix);
+          }
+        };
+        object.ungrab = gi => {
+          if (grabberIndex === gi) {
+            grabberIndex = -1;
+          }
+        };
+        object.update = () => {
+          if (grabberIndex !== -1) {
+            const controllerGrip = renderer.xr.getControllerGrip(grabberIndex);
+            object.matrix
+              .copy(grabStartMatrix)
+              .premultiply(new THREE.Matrix4().getInverse(grabStartControllerMatrix))
+              .premultiply(controllerGrip.matrix)
+              .decompose(object.position, object.quaternion, object.scale);
+
+            object.bound = hudUiMesh.visible && object.position.distanceTo(menuPosition) < modelSize;
+            model.scale.copy(originalScale);
+            if (object.bound) {
+              model.scale.multiplyScalar(scaleFactor);
+            }
+          }
+        };
+
+        scene.add(object);
+        meshes.push(object);
+      }, xhr => {
+        // console.log('progress');
+      }, err => {
+        console.warn('load error', err);
+      });
+    }
+  })();
+  
+  return meshes;
+})();
+
+const hudUiMesh = (() => {
+  const uiWidth = 2048;
+  const uiHeight = 512 + 50;
+  const uiWorldWidth = 1;
+  const uiWorldHeight = uiWorldWidth * uiHeight/uiWidth;
+
+  const mesh = _makeUiMesh({
+    uiWidth,
+    uiHeight,
+    uiWorldWidth,
+    uiWorldHeight,
+  });
+  const renderer = _makeUiRenderer({
+    url: 'hud.html',
+    uiWidth,
+    uiHeight,
+  });
+
+  const users = [];
+  mesh.setUsers = newUsers => {
+    users = newUsers;
+    mesh.update();
+  };
+  mesh.onupdate = () => {
+    const p = renderer.render({
+      users: ['You'].concat(users),
+    });
+    /* p.then(result => {
+      if (hudObject) {
+        socket.request('updateObjectTexture', [
+          hudObject.id,
+          result.width,
+          result.height,
+          result.data,
+        ]);
+      }
+    }); */
+    return p;
+  };
+  mesh.onpress = async hoveredAnchor => {
+    if (hoveredAnchor) {
+      const {id} = hoveredAnchor;
+      if (id === 'microphone') {
+        document.querySelector('.tool[tool=microphone]').click();
+      } else if (id === 'screenshare') {
+        document.querySelector('.tool[tool=screenshare]').click();
+      } else {
+        console.warn('unknown anchor', id);
+      }
+    }
+  };
+  return mesh;
+})();
+hudUiMesh.position.set(0, 1, 1);
+hudUiMesh.visible = false;
+scene.add(hudUiMesh);
+
+const rayMesh = (() => {
+  const geometry = new THREE.CylinderBufferGeometry(0.002, 0.002, 1, 3, 1, false, 0, Math.PI*2)
+    .applyMatrix4(new THREE.Matrix4().makeTranslation(0, 1/2, 0))
+    .applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2)));
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x42a5f5,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.visible = false;
+  mesh.frustumCulled = false;
+  return mesh;
+})();
+scene.add(rayMesh);
+
+// multiplayer
+
+let channelConnection = null;
+const peerConnections = [];
+const _connectMultiplayer = async rid => {
+  const roomId = rid || makeId();
+
+  channelConnection = new XRChannelConnection(`wss://presence.exokit.org/?c=${encodeURIComponent(roomId)}`, {
+    videoMediaStream,
+  });
+  channelConnection.addEventListener('peerconnection', e => {
+    const peerConnection = e.detail;
+
+    bindPeerConnection(peerConnection, container);
+
+    peerConnection.addEventListener('open', () => {
+      peerConnections.push(peerConnection);
+      document.getElementById('user-count-text').innerText = peerConnections.length + 1;
+    });
+    peerConnection.addEventListener('close', () => {
+      peerConnections.splice(peerConnections.indexOf(peerConnection), 1);
+      document.getElementById('user-count-text').innerText = peerConnections.length + 1;
+    });
+    peerConnection.addEventListener('screenshare', e => {
+      const mediaStream = e.detail;
+      console.log('got screen share media stream', mediaStream);
+
+      const video = document.createElement('video');
+      video.srcObject = mediaStream;
+      video.play();
+
+      const screenshareMesh = _makeScreenshareMesh();
+      screenshareMesh.setTexture2W(video);
+      screenshareMesh.position.set(-0.5 + 1/4/2 + 1/4, 0, 0.001);
+      screenshareMesh.scale.set(1/4, (512-50*2)/512, 1);
+      hudUiMesh.add(screenshareMesh);
+    });
+  });
+
+  document.getElementById('room-code-text').innerText = roomId;
+  wristUiMesh.setText(roomId);
+  const href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${roomId}`;
+  document.getElementById('room-link').href = href;
+
+  history.replaceState(null, '', href);
+};
+const _disconnectMultiplayer = async () => {
+  if (channelConnection) {
+    channelConnection.disconnect()
+    channelConnection = null;
+
+    const href = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+    history.replaceState(null, '', href);
+  }
+};
+window.addEventListener('beforeunload', _disconnectMultiplayer);
+
+const header = document.getElementById('header');
+const _clearMultiplayerClasses = () => {
+  ['connected', 'list', 'dialog'].forEach(c => {
+    header.classList.remove(c);
+  });
+};
+const _setConnected = () => {
+  _clearMultiplayerClasses();
+  header.classList.add('connected');
+  wristUiMesh.setConnected(true);
+};
+const _setDisconnected = () => {
+  _clearMultiplayerClasses();
+  wristUiMesh.setConnected(false);
+};
+async function listRooms() {
+  const res = await fetch('https://presence.exokit.org/channels');
+  const j = await res.json();
+  return j;
+}
+document.getElementById('rooms-button').addEventListener('click', async e => {
+  const rooms = await listRooms();
+  const roomsEl = document.getElementById('rooms');
+  if (rooms.length > 0) {
+    roomsEl.innerHTML = rooms.map(room => {
+      return `<a class=room room=${room}>
+        <div class=users>1 <i class="fa fa-user"></i></div>
+        <b class=name>${room}</b>
+      </a>`;
+    }).join('\n');
+    Array.from(roomsEl.querySelectorAll('.room')).forEach(room => {
+      room.addEventListener('click', e => {
+        document.getElementById('room-code-input').value = room.getAttribute('room');
+        document.getElementById('connect-button').click();
+      });
+    });
+  } else {
+    roomsEl.innerHTML = '<div class=placeholder>No rooms :(</div>';
+  }
+  header.classList.add('list');
+});
+document.getElementById('unrooms-button').addEventListener('click', e => {
+  header.classList.remove('list');
+});
+document.getElementById('create-room-button').addEventListener('click', async e => {
+  await _connectMultiplayer();
+  _setConnected();
+});
+document.getElementById('use-code-button').addEventListener('click', e => {
+  _clearMultiplayerClasses();
+  header.classList.add('dialog');
+  document.getElementById('room-code-input').value = '';
+});
+document.getElementById('connect-button').addEventListener('click', async e => {
+  await _connectMultiplayer(document.getElementById('room-code-input').value);
+  _setConnected();
+});
+document.getElementById('cancel-connect-button').addEventListener('click', e => {
+  _clearMultiplayerClasses();
+});
+document.getElementById('disconnect-button').addEventListener('click', async e => {
+  await _disconnectMultiplayer();
+  _setDisconnected();
+});
+
+// addressbook
+
+let addresses = [];
+document.getElementById('addresses').addEventListener('mousedown', e => {
+  e.preventDefault();
+});
+const _updateAddressBook = () => {
+  const addressesEl = document.getElementById('addresses');
+  addressesEl.innerHTML = addresses.map(address => {
+    return `<div class=address address="${address}"">
+      <a class=value>${address}</a>
+      <a class="button secondary">- Remove</a>
+    </div>`;
+  }).join('\n');
+  const addressEls = Array.from(addressesEl.querySelectorAll('.address'));
+  for (let i = 0; i < addressEls.length; i++) {
+    const addressEl = addressEls[i];
+    const address = addressEl.getAttribute('address');
+    const buttonEl = addressEl.querySelector('.button');
+    addressEl.addEventListener('click', e => {
+      e.stopPropagation();
+
+      tradeUiMesh.setDstAddress(address);
+    });
+    buttonEl.addEventListener('click', e => {
+      e.stopPropagation();
+
+      addresses = addresses.filter(a => a !== address);
+      localStorage.setItem('addressbook', JSON.stringify(addresses));
+      _updateAddressBook();
+    });
+  }
+  tradeUiMesh.update();
+};
+{
+  const keystoreString = localStorage.getItem('wallet');
+  if (keystoreString) {
+    header.classList.add('locked');
+  }
+
+  const addressbookString = localStorage.getItem('addressbook');
+  if (addressbookString) {
+    addresses = JSON.parse(addressbookString);
+    _updateAddressBook(addresses);
+  }
+}
+const addressInput = document.getElementById('address-input');
+addressInput.id = 'fake' + Math.random();
+document.getElementById('add-address-button').addEventListener('click', e => {
+  const address = addressInput.value;
+  if (/^0x[a-f0-9]{40}$/i.test(address) && !addresses.includes(address)) {
+    addresses.push(address);
+    localStorage.setItem('addressbook', JSON.stringify(addresses));
+    _updateAddressBook();
+  }
+
+  addressInput.focus();
+});
+
+// wallet
+
+let keystore = null;
+const hdPathString = `m/44'/60'/0'/0`;
+async function exportSeed(ks, password) {
+  const p = makePromise();
+  ks.keyFromPassword(password, function (err, pwDerivedKey) {
+    if (!err) {
+      const seed = keystore.getSeed(pwDerivedKey);
+      p.accept(seed);
+    } else {
+      p.reject(err);
+    }
+  });
+  return await p;
+}
+async function signTx(ks, password, rawTx) {
+  const p = makePromise();
+  ks.keyFromPassword(password, function (err, pwDerivedKey) {
+    if (!err) {
+      const address = ks.addresses[0];
+      console.log('sign tx', ks, pwDerivedKey, rawTx, address, hdPathString);
+      const signed = lightwallet.signing.signTx(ks, pwDerivedKey, rawTx, `0x${address}`, hdPathString);
+      p.accept(signed);
+    } else {
+      p.reject(err);
+    }
+  });
+  return await p;
+}
+const _createKeystore = async (seedPhrase, password) => {
+  // var seedPhrase = lightwallet.keystore.generateRandomSeed();
+
+  const p = makePromise();
+  lightwallet.keystore.createVault({
+    password,
+    seedPhrase, // Optionally provide a 12-word seed phrase
+    // salt: fixture.salt,     // Optionally provide a salt.
+                               // A unique salt will be generated otherwise.
+    hdPathString,    // Optional custom HD Path String
+  },
+  (err, ks) => {
+    // console.log('got keystore', err, ks);
+    // window.ks = ks;
+
+    if (!err) {
+      ks.keyFromPassword(password, function (err, pwDerivedKey) {
+        if (!err) {
+          ks.generateNewAddress(pwDerivedKey, 1);
+
+          p.accept(ks);
+        } else {
+          p.reject(err);
+        }
+      });
+    } else {
+      p.reject(err);
+    }
+  });
+  const ks = await p;
+  ks.exportSeed = exportSeed.bind(null, ks, password);
+  ks.signTx = signTx.bind(null, ks, password);
+  return ks;
+};
+const _exportKeyStore = ks => ks.serialize();
+const _importKeyStore = async (s, password) => {
+  const ks = lightwallet.keystore.deserialize(s);
+
+  const p = makePromise();
+  ks.keyFromPassword(password, function (err, pwDerivedKey) {
+    if (!err) {
+      if (ks.isDerivedKeyCorrect(pwDerivedKey)) {
+        p.accept();
+      } else {
+        p.reject(new Error('invalid password'));
+      }
+    } else {
+      p.reject(err);
+    }
+  });
+  await p;
+  ks.exportSeed = exportSeed.bind(null, ks, password);
+  ks.signTx = signTx.bind(null, ks, password);
+  return ks;
+};
+const _clearWalletClasses = () => {
+  ['import', 'locked', 'unlocked'].forEach(c => {
+    header.classList.remove(c);
+  });
+};
+document.getElementById('import-key-button').addEventListener('click', async e => {
+  document.getElementById('password-input').value = '';
+  document.getElementById('seed-phrase-input').value = '';
+
+  _clearWalletClasses();
+  header.classList.add('import');
+});
+document.getElementById('create-wallet-button').addEventListener('click', e => {
+  document.getElementById('password-input').value = '';
+  document.getElementById('seed-phrase-input').value = lightwallet.keystore.generateRandomSeed();
+
+  _clearWalletClasses();
+  header.classList.add('import');
+});
+document.getElementById('import-button').addEventListener('click', async e => {
+  // the seed is stored encrypted by a user-defined password
+  const seedPhrase = document.getElementById('seed-phrase-input').value;
+  const password = document.getElementById('password-input').value;
+  // var seedPhrase = lightwallet.keystore.generateRandomSeed();
+
+  keystore = await _createKeystore(seedPhrase, password);
+  localStorage.setItem('wallet', _exportKeyStore(keystore));
+  const address = keystore.addresses[0];
+  let balance = await web3.eth.getBalance(address);
+  balance /= 1e18;
+
+  document.getElementById('seed-phrase-input').value = '';
+  document.getElementById('password-input').value = '';
+  document.getElementById('address-text').innerText = `0x${address}`;
+  document.getElementById('balance-text').innerText = `${balance} ETH`;
+
+  tradeUiMesh.setSrcAddress(`0x${address}`);
+
+  _clearWalletClasses();
+  header.classList.add('unlocked');
+});
+[
+  'seed-phrase-input',
+  'password-input',
+].forEach(k => {
+  document.getElementById(k).addEventListener('keydown', e => {
+    if (e.which === 13) {
+      document.getElementById('import-button').click();
+    }
+  });
+});
+document.getElementById('cancel-import-button').addEventListener('click', e => {
+  _clearWalletClasses();
+});
+document.getElementById('unlock-wallet-button').addEventListener('click', async e => {
+  const keystoreString = localStorage.getItem('wallet');
+  const password = document.getElementById('password-unlock-input').value;
+
+  keystore = await _importKeyStore(keystoreString, password);
+  const address = keystore.addresses[0];
+  let balance = await web3.eth.getBalance(address);
+  balance /= 1e18;
+
+  document.getElementById('password-unlock-input').value = '';
+  document.getElementById('address-text').innerText = `0x${address}`;
+  document.getElementById('balance-text').innerText = `${balance} ETH`;
+
+  tradeUiMesh.setSrcAddress(`0x${address}`);
+
+  _clearWalletClasses();
+  header.classList.add('unlocked');
+});
+document.getElementById('password-unlock-input').addEventListener('keydown', e => {
+  if (e.which === 13) {
+    document.getElementById('unlock-wallet-button').click();
+  }
+});
+document.getElementById('download-key-button').addEventListener('click', async e => {
+  const seed = await keystore.exportSeed();
+  const a = document.createElement('a');
+  const b = new Blob([seed], {
+    type: 'text/plain',
+  });
+  const u = URL.createObjectURL(b);
+  a.href = u;
+  a.download = 'seed.txt';
+  a.click();
+  URL.revokeObjectURL(u);
+});
+document.getElementById('forget-wallet-button').addEventListener('click', e => {
+  localStorage.removeItem('wallet');
+  _clearWalletClasses();
+});
+document.getElementById('lock-wallet-button').addEventListener('click', e => {
+  keystore = null;
+
+  tradeUiMesh.setSrcAddress('');
+
+  _clearWalletClasses();
+  header.classList.add('locked');
+});
+
+// engine
+
+/* const socket = new WebSocket(`ws://localhost:3000/`);
+socket.onopen = async () => {
+  console.log('socket open', socket);
+};
+socket.binaryType = 'arraybuffer';
+const cbs = [];
+const socketData = [];
+let binaryMode = null;
+let handlePose = null;
+let handleMirrorTexture = null;
+socket.onmessage = m => {
+  if (typeof m.data === 'string') {
+    if (m.data === 'pose' || m.data === 'mirrorTexture') {
+      binaryMode = m.data;
+    } else {
+      m = JSON.parse(m.data);
+      const cb = cbs.shift();
+      cb && cb(m);
+    }
+  } else {
+    if (binaryMode === 'pose') {
+      socketData.push(m.data);
+      if (socketData.length >= 3) {
+        handlePose && handlePose.apply(null, socketData);
+        socketData.length = 0;
+        binaryMode = null;
+      }
+    } else if (binaryMode === 'mirrorTexture') {
+      handleMirrorTexture && handleMirrorTexture(m.data);
+    } else {
+      console.warn('got unexpected binary message');
+    }
+  }
+};
+socket.onclose = () => {
+  console.log('socket close', socket);
+};
+socket.request = async (method, args) => {
+  const bins = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg instanceof ArrayBuffer || ArrayBuffer.isView(arg)) {
+      bins.push(arg);
+      args[i] = null;
+    }
+  }
+
+  const p = makePromise();
+  cbs.push(o => {
+    const {error, result} = o;
+     if (!error) {
+       p.accept(result);
+     } else {
+       p.reject(error);
+     }
+  });
+  socket.send(JSON.stringify({
+    method,
+    args,
+  }));
+  for (let i = 0; i < bins.length; i++) {
+    socket.send(bins[i]);
+  }
+  return await p;
+}; */
+
+const _getImageData = (() => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  return image => {
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.drawImage(image, 0, 0);
+    return ctx.getImageData(0, 0, image.width, image.height);
+  };
+})();
+const _makeScreenshareMesh = () => {
+  const geometry = new THREE.PlaneBufferGeometry(1, 1);
+  const texture = new THREE.Texture();
+  texture.generateMipmaps = false;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = THREE.LinearFilter;
+  const targetVsh = `
+    varying vec2 vUv;
+    void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+      vUv = uv;
+    }
+  `;
+  const targetFsh = `
+    uniform float uXOffset;
+    uniform vec2 uX;
+    uniform vec2 uY;
+    uniform sampler2D uTex1;
+    varying vec2 vUv;
+    void main() {
+      vec2 uv = vUv;
+      if (uv.x < 0.1 || uv.x > 0.9) {
+        discard;
+      } else {
+        uv.x += uXOffset;
+        uv.x *= uX.y;
+        uv.x += uX.x;
+        uv.y *= uY.y;
+        uv.y += uY.x;
+        gl_FragColor = texture2D(uTex1, uv);
+      }
+    }
+  `;
+  const uXs = [
+    {
+      type: 'v2',
+      value: new THREE.Vector2(0, 1),
+    },
+    {
+      type: 'v2',
+      value: new THREE.Vector2(0, 1),
+    },
+  ];
+  const uYs = [
+    {
+      type: 'v2',
+      value: new THREE.Vector2(0, 1),
+    },
+    {
+      type: 'v2',
+      value: new THREE.Vector2(0, 1),
+    },
+  ];
+  const _makeMesh = (uXOffsetValue, uX, uY, layers) => {
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uXOffset: {
+          type: 'f',
+          value: uXOffsetValue,
+        },
+        uX,
+        uY,
+        uTex1: {
+          type: 't',
+          value: texture,
+        },
+      },
+      vertexShader: targetVsh,
+      fragmentShader: targetFsh,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.layers.disableAll();
+    layers.forEach(l => {
+      mesh.layers.enable(l);
+    });
+    mesh.frustumCulled = false;
+    return mesh;
+  };
+  const mesh = new THREE.Object3D();
+  mesh.add(_makeMesh(0.1, uXs[0], uYs[0], [0, 1]));
+  mesh.add(_makeMesh(-0.1, uXs[1], uYs[1], [2]));
+  mesh.isScreenshareMesh = true;
+  mesh.getTexture = () => texture.image;
+  mesh.getImageData = () => _getImageData(texture.image);
+  mesh.setTexture2H = image => {
+    texture.image = image;
+    uXs[0].value.set(0, 1);
+    uXs[1].value.set(0, 1);
+    uYs[0].value.set(0.5, 0.5);
+    uYs[1].value.set(0, 0.5);
+  };
+  mesh.setTexture2W = image => {
+    texture.image = image;
+    uXs[0].value.set(0, 0.5);
+    uXs[1].value.set(0.5, 0.5);
+    uYs[0].value.set(0, 1);
+    uYs[1].value.set(0, 1);
+  };
+  mesh.setTexture1 = image => {
+    texture.image = image;
+    uXs[0].value.set(0, 1);
+    uXs[1].value.set(0, 1);
+    uYs[0].value.set(0, 1);
+    uYs[1].value.set(0, 1);
+  };
+  mesh.updateTexture = i => {
+    texture.needsUpdate = true;
+  };
+  return mesh;
+};
+const mirrorTextureMesh = _makeScreenshareMesh();
+mirrorTextureMesh.position.set(-0.5 + 1/4/2, 0, 0.001);
+mirrorTextureMesh.scale.set(1/4, (512-50*2)/512, 1);
+hudUiMesh.add(mirrorTextureMesh);
+
+/* handleMirrorTexture = (() => {
+  let running = false;
+  const _getImg = d => {
+    const p = makePromise();
+    const b = new Blob([d], {
+      type: 'image/jpeg',
+    });
+    const u = URL.createObjectURL(b);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(u);
+      p.accept(img);
+    };
+    img.onerror = err => {
+      URL.revokeObjectURL(u);
+      p.reject(err);
+    };
+    img.src = u;
+    return p;
+  };
+  return async d => {
+    if (!running) {
+      running = true;
+      const img = await _getImg(d);
+      mirrorTextureMesh.setTexture2H(img);
+      mirrorTextureMesh.updateTexture();
+      requestAnimationFrame(() => {
+        running = false;
+      });
+    }
+  };
+})(); */
+
+let capturing = false;
+/* document.getElementById('start-capture-button').addEventListener('click', async e => {
+  await socket.request('startRenderer', []);
+  console.log('render started');
+
+  await socket.request('startMirrorTextures', []);
+  console.log('mirror textures started');
+  capturing = true;
+}); */
+
+const enterVrButton = document.getElementById('enter-vr-button');
+const triggerDowns = [false, false];
+const gripDowns = [false, false];
+let scaleState = null;
+const lastSqueezes = [false, false];
+function onSessionStarted(session) {
+  session.addEventListener('end', onSessionEnded);
+
+  renderer.setPixelRatio(1);
+  canvas.width = captureSize;
+  canvas.height = captureSize;
+
+  renderer.xr.setReferenceSpaceType('local');
+  renderer.xr.setSession(session);
+
+  currentSession = session;
+  
+  renderer.setClearColor(new THREE.Color(0xFFFFFF), 0);
+
+  const xrCamera = renderer.xr.getCamera(camera);
+  const {cameras} = xrCamera;
+  cameras[0].name = 'left';
+  cameras[1].name = 'right';
+
+  // const controllerModelFactory = new XRControllerModelFactory();
+  for (let i = 0; i < 2; i++) {
+    const index = i;
+    const controller = renderer.xr.getController(i);
+    controller.addEventListener('connected', e => {
+      controller.userData.data = e.data;
+    });
+    controller.addEventListener('selectstart', e => {
+      if (controller.userData.data && controller.userData.data.handedness === 'right') {
+        wristUiMesh.press() || tradeUiMesh.press() || hudUiMesh.press();
+        // _beginTool(true, false, false);
+      }
+      triggerDowns[i] = true;
+      
+      tradeUiModels.forEach(m => {
+        m.use(index);
+      });
+    });
+    controller.addEventListener('selectend', e => {
+      /* if (controller.userData.data && controller.userData.data.handedness === 'right') {
+        _endTool(true, false, false);
+      } */
+      triggerDowns[i] = false;
+    });
+
+    const controllerGrip = renderer.xr.getControllerGrip(i);
+    // controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+    const squeezestart = e => {
+      /* if (controller.userData.data && controller.userData.data.handedness === 'right') {
+        _beginTool(false, true, false);
+      }
+      const oldGripDownsAll = gripDowns.every(gripDown => gripDown); */
+      gripDowns[i] = true;
+      /* const newGripDownsAll = gripDowns.every(gripDown => gripDown);
+      if (newGripDownsAll && !oldGripDownsAll) {
+        _commitMiningMeshes();
+        
+        scaleState = {
+          startPosition: renderer.xr.getControllerGrip(0).position.clone()
+            .add(renderer.xr.getControllerGrip(1).position)
+            .divideScalar(2),
+          startDirection: renderer.xr.getControllerGrip(0).position.clone()
+            .sub(renderer.xr.getControllerGrip(1).position)
+            .normalize(),
+          startWorldWidth: renderer.xr.getControllerGrip(0).position
+            .distanceTo(renderer.xr.getControllerGrip(1).position),
+          containerStartPosition: container.position.clone(),
+          containerStartQuaternion: container.quaternion.clone(),
+          containerStartScale: container.scale.clone(),
+          containerStartMatrix: container.matrix.clone(),
+        };
+      } */
+      
+      tradeUiModels.forEach(m => {
+        m.grab(index);
+      });
+    };
+    controllerGrip.addEventListener('squeezestart', squeezestart);
+    controllerGrip.onsqueezestart = squeezestart;
+    const squeezeend = e => {
+      /* if (controller.userData.data && controller.userData.data.handedness === 'right') {
+        _endTool(false, true, false);
+      } */
+      gripDowns[i] = false;
+      /* const newGripDownsAll = gripDowns.every(gripDown => gripDown);
+      if (!newGripDownsAll) {
+        scaleState = null;
+      } */
+      
+      tradeUiModels.forEach(m => {
+        m.ungrab(index);
+      });
+    };
+    controllerGrip.onsqueeze = e => {};
+    controllerGrip.addEventListener('squeezeend', squeezeend);
+    controllerGrip.onsqueezeend = squeezeend;
+    scene.add(controllerGrip);
+  }
+
+  rig && rig.decapitate();
+}
+function onSessionEnded() {
+  currentSession.removeEventListener('end', onSessionEnded);
+
+  currentSession = null;
+}
+enterVrButton.addEventListener('click', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (currentSession === null) {
+    navigator.xr.requestSession('immersive-vr', {
+      optionalFeatures: [
+        'local-floor',
+        'bounded-floor',
+      ],
+      // alpha: true,
+    }).then(onSessionStarted);
+  } else {
+    currentSession.end();
+  }
+
+  header.classList.add('vr');
+});
+
+const localRaycaster = new THREE.Raycaster();
+const _updateRaycasterFromMouseEvent = (raycaster, e) => {
+  const mouse = new THREE.Vector2(( ( e.clientX ) / window.innerWidth ) * 2 - 1, - ( ( e.clientY ) / window.innerHeight ) * 2 + 1);
+  raycaster.setFromCamera(mouse, camera);
+  /* if (selectedTool === 'brush') {
+    raycaster.ray.origin.add(raycaster.ray.direction);
+  } */
+};
+const _updateRaycasterFromObject = (raycaster, o) => {
+  raycaster.ray.origin.copy(o.position);
+  raycaster.ray.direction.set(0, 0, -1).applyQuaternion(o.quaternion);
+};
+const _updateIntersections = raycaster => {
+  const intersected = [wristUiMesh, tradeUiMesh, hudUiMesh].some(uiMesh => {
+    const intersections = raycaster.intersectObject(uiMesh);
+    if (intersections.length > 0 && intersections[0].distance < 3) {
+      const [{distance, uv}] = intersections;
+      rayMesh.position.copy(raycaster.ray.origin);
+      rayMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
+      rayMesh.scale.z = distance;
+      rayMesh.visible = true;
+
+      // orbitControls.enabled = false;
+
+      return uiMesh.intersect(uv);
+    } else {
+      rayMesh.visible = false;
+      
+      // orbitControls.enabled = selectedTool === 'camera';
+
+      return uiMesh.intersect(null);
+    }
+  });
+  orbitControls.enabled = cameraMode === 'orbit' && !intersected;
+};
+
+const velocity = new THREE.Vector3();
+const wristUiQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI/2)
+  .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2));
+const captureSize = 256;
+function animate() {
+  orbitControls.enabled && orbitControls.update();
+
+  if (currentSession) {
+    for (let i = 0; i < 2; i++) {
+      const controller = renderer.xr.getController(i);
+      if (controller.userData.data) {
+        if (controller.userData.data.handedness === 'left') {
+          wristUiMesh.quaternion.copy(controller.quaternion)
+            .multiply(wristUiQuaternion);
+          wristUiMesh.position.copy(controller.position)
+            .add(new THREE.Vector3(0, 0, 0.1).applyQuaternion(wristUiMesh.quaternion));
+        } else if (controller.userData.data.handedness === 'right') {
+          _updateRaycasterFromObject(localRaycaster, controller);
+        }
+      }
+    }
+
+    updatePlayerFromXr(renderer.xr, camera);
+  } else if (cameraMode !== 'orbit') {
+    const speed = 0.015 * (keys.shift ? 3 : 1);
+    const cameraEuler = camera.rotation.clone();
+    cameraEuler.x = 0;
+    cameraEuler.z = 0;
+    const extraVelocity = new THREE.Vector3();
+    if (keys.left) {
+      extraVelocity.add(new THREE.Vector3(-1, 0, 0).applyEuler(cameraEuler));
+    }
+    if (keys.right) {
+      extraVelocity.add(new THREE.Vector3(1, 0, 0).applyEuler(cameraEuler));
+    }
+    if (keys.up) {
+      extraVelocity.add(new THREE.Vector3(0, 0, -1).applyEuler(cameraEuler));
+    }
+    if (keys.down) {
+      extraVelocity.add(new THREE.Vector3(0, 0, 1).applyEuler(cameraEuler));
+    }
+    if (extraVelocity.length() > 0) {
+      extraVelocity.normalize().multiplyScalar(speed);
+    }
+    velocity.add(extraVelocity);
+    camera.position.add(velocity);
+    velocity.multiplyScalar(0.7);
+    
+    orbitControls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -1.5).applyQuaternion(camera.quaternion));
+    
+    updatePlayerFromCamera(camera);
+  } else {
+    updatePlayerDefault();
+  }
+  
+  if (currentSession) {
+    const {inputSources} = currentSession;
+    for (let i = 0; i < inputSources.length; i++) {
+      const inputSource = inputSources[i];
+      const controllerGrip = renderer.xr.getControllerGrip(i);
+
+      const {handedness, gamepad} = inputSource;
+      const {buttons} = gamepad;
+      const gripButton = buttons[1];
+      const {pressed: squeeze} = gripButton;
+      // const index = handedness === 'right' ? 1 : 0;
+      const lastSqueeze = lastSqueezes[i];
+
+      if (squeeze && !lastSqueeze) {
+        controllerGrip.onsqueezestart();
+        controllerGrip.onsqueeze();
+      } else if (lastSqueeze && !squeeze) {
+        controllerGrip.onsqueezeend();
+      }
+      lastSqueezes[i] = squeeze;
+    }
+    
+    tradeUiModels.forEach(m => {
+      m.update();
+    });
+  }
+  
+  _updateIntersections(localRaycaster);
+
+  for (let i = 0; i < peerConnections.length; i++) {
+    const peerConnection = peerConnections[i];
+    peerConnection.rig && peerConnection.rig.update();
+  }
+
+  /* tickObjectScript(objectState);
+  if (ammo) {
+    ammo.simulate();
+    for (let i = 0; i < objectMeshes.length; i++) {
+      ammo.updateObjectMesh(objectMeshes[i]);
+    }
+  } */
+
+  const thirdperson = cameraMode === 'thirdperson';
+  let oldCameraPosition;
+  if (thirdperson) {
+    oldCameraPosition = camera.position.clone();
+    camera.position.add(new THREE.Vector3(0, 0, 2).applyQuaternion(camera.quaternion));
+  }
+  if (!capturing) {
+    if (!currentSession) {
+      let image = mirrorTextureMesh.getTexture();
+      if (!image || image.tagName !== 'CANVAS') {
+        const canvas = document.createElement('canvas');
+        canvas.width = captureSize;
+        canvas.height = captureSize;
+        const ctx = canvas.getContext('2d');
+        canvas.ctx = ctx;
+        image = canvas;
+        mirrorTextureMesh.setTexture2W(image);
+      }
+      image.ctx.drawImage(renderer.domElement, 0, 0, image.width, image.height);
+      mirrorTextureMesh.updateTexture();
+    } else {
+      renderer.xr.enabled = false;
+      const framebuffer = renderer.getFramebuffer();
+      renderer.setFramebuffer(null);
+      const {cameras} = renderer.xr.getCamera(camera);
+      renderer.clear(true, true, true);
+      for (let i = 0; i < cameras.length && i < 2; i++) {
+        renderer.setViewport(renderer.domElement.width * (i === 0 ? 0 : 0.5), 0, renderer.domElement.width*0.5, renderer.domElement.height);
+        renderer.viewportEnabled = false;
+        renderer.render(scene, cameras[i]);
+        renderer.viewportEnabled = true;
+      }
+      renderer.setFramebuffer(framebuffer);
+      renderer.xr.enabled = true;
+    
+      let image = mirrorTextureMesh.getTexture();
+      if (!image || image.tagName !== 'CANVAS') {
+        const canvas = document.createElement('canvas');
+        canvas.width = captureSize;
+        canvas.height = captureSize;
+        const ctx = canvas.getContext('2d');
+        canvas.ctx = ctx;
+        image = canvas;
+        mirrorTextureMesh.setTexture2W(image);
+      }
+      image.ctx.drawImage(renderer.domElement, 0, 0, image.width, image.height);
+      mirrorTextureMesh.updateTexture();
+    }
+  }
+  for (let i = 0; i < hudUiMesh.children.length; i++) {
+    const o = hudUiMesh.children[i];
+    if (o.isScreenshareMesh) {
+      const image = o.getTexture();
+      if (image.tagName === 'VIDEO') {
+        o.updateTexture();
+      }
+    }
+  }
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  if (thirdperson) {
+    camera.position.copy(oldCameraPosition);
+  }
+}
+renderer.setAnimationLoop(animate);
+
+window.addEventListener('mousemove', e => {
+  if (!currentSession) {
+    _updateRaycasterFromMouseEvent(localRaycaster, e);
+  }
+});
+window.addEventListener('mousedown', e => {
+  if (!currentSession) {
+    wristUiMesh.press() || tradeUiMesh.press() || hudUiMesh.press();
+  }
+});
+
+navigator.xr && navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+  if (supported) {
+    renderer.xr.enabled = true;
+    enterVrButton.classList.remove('disabled');
+  } else {
+    // nothing
+  }
+});
+
+window.addEventListener('resize', e => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+{
+  const q = parseQuery(window.location.search);
+  const {r} = q;
+  if (r) {
+    document.getElementById('room-code-input').value = r;
+    document.getElementById('connect-button').click();
+  }
+}
+
+</script>
+</body>
+</html>
