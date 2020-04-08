@@ -868,7 +868,7 @@ const tradeUiModels = (() => {
     let nonce = await contract.methods.getNonce().call();
     nonce = parseInt(nonce, 10);
 
-    for (let i = 1; i <= nonce; i++) {
+    for (let i = 1; i <= nonce && i < 5; i++) {
       const metadataHash = await contract.methods.getMetadata(i, 'hash').call();
       const metadata = await fetch(`${apiHost}/${metadataHash}`)
         .then(res => res.json());
