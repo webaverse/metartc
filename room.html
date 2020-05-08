@@ -1998,6 +1998,7 @@ navigator.xr && navigator.xr.isSessionSupported('immersive-vr').then(supported =
   if (supported) {
     renderer.xr.enabled = true;
     enterVrButton.classList.remove('disabled');
+    enterVrButton.click();
   } else {
     // nothing
   }
