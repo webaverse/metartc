@@ -42,7 +42,7 @@ channelConnection.addEventListener('peerconnection', e => {
 
 #### `'close' event`
 
-Emitted on the peer connection closing. Do not use the connection after this event.
+Emitted on the `XRChannelConnection` closing. Do not use the connection after this event.
 
 ### `XRPeerConnection`
 
