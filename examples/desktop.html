@@ -1,0 +1,302 @@
+<!doctype html>
+<html>
+<head>
+<style>
+  body {
+    margin: 0;
+  }
+  form {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+  <form>
+    <h1>Connect to room</h1>
+    <input type="text" placeholder="Room name" id=room-name-input>
+    <input type=button value="Connect" id=connect-button>
+    <input type=button value="Disonnect" id=disconnect-button style="display: none;">
+    <p>Click for FPS controls</p>
+  </form>
+<script type=module>
+import THREE from 'https://metartc.com/three.module.js';
+import {makeId, XRChannelConnection} from 'https://metartc.com/multiplayer.js';
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+});
+renderer.autoClear = false;
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.sortObjects = false;
+renderer.physicallyCorrectLights = true;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xFFFFFFF);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0.5, 2);
+camera.rotation.order = 'YXZ';
+
+const ambientLight = new THREE.AmbientLight(0xFFFFFF);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 2);
+directionalLight.position.set(0.5, 1, 0.5).multiplyScalar(100);
+scene.add(directionalLight);
+
+const directionalLight2 = new THREE.DirectionalLight(0xFFFFFF, 2);
+directionalLight2.position.set(-0.5, 0.1, 0.5).multiplyScalar(100);
+scene.add(directionalLight2);
+
+const floorMesh = (() => {
+  const geometry = new THREE.BoxBufferGeometry(10, 10, 10);
+  const material = new THREE.MeshPhongMaterial({color: 0xEEEEEE});
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = -10/2;
+  return mesh;
+})();
+scene.add(floorMesh);
+
+const container = new THREE.Object3D();
+scene.add(container);
+
+let rig = null;
+let videoMediaStream = null;
+let currentSession = null;
+
+const _makeRig = () => {
+  const head = new THREE.Mesh(new THREE.BoxBufferGeometry(0.1, 0.1, 0.2), new THREE.MeshPhongMaterial({color: 0xef5350}));
+  const leftHand = new THREE.Mesh(new THREE.BoxBufferGeometry(0.05, 0.01, 0.1), new THREE.MeshPhongMaterial({color: 0x66bb6a}));
+  const rightHand = new THREE.Mesh(new THREE.BoxBufferGeometry(0.05, 0.01, 0.1), new THREE.MeshPhongMaterial({color: 0x42a5f5}));
+  return {
+    head,
+    leftHand,
+    rightHand,
+  };
+};
+const myRig = _makeRig();
+
+// tools
+
+const keys = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  shift: false,
+};
+window.addEventListener('keydown', e => {
+  switch (e.which) {
+    case 87: { // W
+      if (!document.pointerLockElement) {
+        // nothing
+      } else {
+        keys.up = true;
+      }
+      break;
+    }
+    case 65: { // A
+      if (!document.pointerLockElement) {
+        // nothing
+      } else {
+        keys.left = true;
+      }
+      break;
+    }
+    case 83: { // S
+      if (!document.pointerLockElement) {
+        // nothing
+      } else {
+        keys.down = true;
+      }
+      break;
+    }
+    case 68: { // D
+      if (!document.pointerLockElement) {
+        // nothing
+      } else {
+        keys.right = true;
+      }
+      break;
+    }
+    case 16: { // shift
+      if (document.pointerLockElement) {
+        keys.shift = true;
+      }
+      break;
+    }
+  }
+});
+window.addEventListener('keyup', e => {
+  switch (e.which) {
+    case 87: { // W
+      if (document.pointerLockElement) {
+        keys.up = false;
+      }
+      break;
+    }
+    case 65: { // A
+      if (document.pointerLockElement) {
+        keys.left = false;
+      }
+      break;
+    }
+    case 83: { // S
+      if (document.pointerLockElement) {
+        keys.down = false;
+      }
+      break;
+    }
+    case 68: { // D
+      if (document.pointerLockElement) {
+        keys.right = false;
+      }
+      break;
+    }
+    case 16: { // shift
+      if (document.pointerLockElement) {
+        keys.shift = false;
+      }
+      break;
+    }
+  }
+});
+window.addEventListener('mousemove', e => {
+  if (document.pointerLockElement) {
+    const {movementX, movementY} = e;
+    camera.rotation.y -= movementX * Math.PI*2*0.001;
+    camera.rotation.x -= movementY * Math.PI*2*0.001;
+  }
+});
+
+let channelConnection = null;
+const peerConnections = [];
+let microphoneMediaStream = null;
+const _connectMultiplayer = async rid => {
+  const roomId = rid || makeId();
+
+  channelConnection = new XRChannelConnection(`wss://presence.exokit.org/?c=${encodeURIComponent(roomId)}`, {
+    // videoMediaStream,
+  });
+  channelConnection.addEventListener('peerconnection', e => {
+    const peerConnection = e.detail;
+
+    bindPeerConnection(peerConnection, container);
+
+    peerConnection.addEventListener('open', () => {
+      peerConnections.push(peerConnection);
+    });
+    peerConnection.addEventListener('close', () => {
+      peerConnections.splice(peerConnections.indexOf(peerConnection), 1);
+    });
+    peerConnection.addEventListener('screenshare', e => {
+      const mediaStream = e.detail;
+      console.log('got screen share media stream', mediaStream);
+
+      const video = document.createElement('video');
+      video.srcObject = mediaStream;
+      video.play();
+    });
+  });
+};
+const _disconnectMultiplayer = async () => {
+  if (channelConnection) {
+    channelConnection.disconnect()
+    channelConnection = null;
+
+    const href = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+    history.replaceState(null, '', href);
+  }
+};
+window.addEventListener('beforeunload', _disconnectMultiplayer);
+
+function updatePlayerFromCamera(camera) {
+  if (rig) {
+    rig.inputs.hmd.position.copy(camera.position);
+    rig.inputs.hmd.quaternion.copy(camera.quaternion);
+    _alignRigHandsToHead(rig);
+
+    rig.update();
+  }
+}
+
+const velocity = new THREE.Vector3();
+function animate() {
+  // input handling
+  const speed = 0.015 * (keys.shift ? 3 : 1);
+  const cameraEuler = camera.rotation.clone();
+  cameraEuler.x = 0;
+  cameraEuler.z = 0;
+  const extraVelocity = new THREE.Vector3();
+  if (keys.left) {
+    extraVelocity.add(new THREE.Vector3(-1, 0, 0).applyEuler(cameraEuler));
+  }
+  if (keys.right) {
+    extraVelocity.add(new THREE.Vector3(1, 0, 0).applyEuler(cameraEuler));
+  }
+  if (keys.up) {
+    extraVelocity.add(new THREE.Vector3(0, 0, -1).applyEuler(cameraEuler));
+  }
+  if (keys.down) {
+    extraVelocity.add(new THREE.Vector3(0, 0, 1).applyEuler(cameraEuler));
+  }
+  if (extraVelocity.length() > 0) {
+    extraVelocity.normalize().multiplyScalar(speed);
+  }
+  velocity.add(extraVelocity);
+  camera.position.add(velocity);
+  velocity.multiplyScalar(0.7);
+
+  // update local player
+  myRig.head.position.copy(camera.position);
+  myRig.head.quaternion.copy(camera.quaternion);
+  myRig.leftHand.position.copy(camera.position).add(new THREE.Vector3(-0.1, -0.5, -0.1).applyQuaternion(camera.quaternion));
+  myRig.leftHand.quaternion.copy(camera.quaternion);
+  myRig.rightHand.position.copy(camera.position).add(new THREE.Vector3(0.1, -0.5, -0.1).applyQuaternion(camera.quaternion));
+  myRig.rightHand.quaternion.copy(camera.quaternion);
+
+  // write local player to network
+  // XXX
+
+  // read remote players from network
+  for (let i = 0; i < peerConnections.length; i++) {
+    const peerConnection = peerConnections[i];
+    // peerConnection.rig && peerConnection.rig.update();
+  }
+
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(animate);
+
+const roomNameInput = document.getElementById('room-name-input');
+const connectButton = document.getElementById('connect-button');
+const disconnectButton = document.getElementById('disconnect-button');
+
+connectButton.addEventListener('click', e => {
+  const roomName = roomNameInput.value;
+  _connectMultiplayer(roomName);
+  connectButton.style.display = 'none';
+  disconnectButton.style.display = null;
+});
+disconnectButton.addEventListener('click', e => {
+  _disconnectMultiplayer();
+  connectButton.style.display = null;
+  disconnectButton.style.display = 'none';
+});
+renderer.domElement.addEventListener('click', e => {
+  renderer.domElement.requestPointerLock();
+});
+
+window.addEventListener('resize', e => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+</script>
+</body>
+</html>
