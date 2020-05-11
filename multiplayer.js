@@ -32,7 +32,7 @@ class XRChannelConnection extends EventTarget {
         connectionId: this.connectionId,
       }));
 
-      this.dispatchEvent(new CustomEvent('open'));
+      this.dispatchEvent(new MessageEvent('open'));
     };
     const _addPeerConnection = peerConnectionId => {
       let peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
@@ -83,8 +83,8 @@ class XRChannelConnection extends EventTarget {
         };
 
         this.peerConnections.push(peerConnection);
-        this.dispatchEvent(new CustomEvent('peerconnection', {
-          detail: peerConnection,
+        this.dispatchEvent(new MessageEvent('peerconnection', {
+          data: peerConnection,
         }));
 
         if (this.microphoneMediaStream) {
@@ -242,7 +242,7 @@ class XRChannelConnection extends EventTarget {
       clearInterval(pingInterval);
       console.log('rtc ws got close');
 
-      this.dispatchEvent(new CustomEvent('close'));
+      this.dispatchEvent(new MessageEvent('close'));
     };
     this.rtcWs.onerror = err => {
       console.warn('rtc error', err);
@@ -349,15 +349,15 @@ class XRPeerConnection extends EventTarget {
     this.open = false;
 
     /* this.peerConnection.onaddstream = e => {
-      this.dispatchEvent(new CustomEvent('mediastream', {
-        detail: e.stream,
+      this.dispatchEvent(new MessageEvent('mediastream', {
+        data: e.stream,
       }));
     }; */
     this.peerConnection.ontrack = e => {
       const mediaStream = new MediaStream();
       mediaStream.addTrack(e.track);
-      this.dispatchEvent(new CustomEvent('mediastream', {
-        detail: mediaStream,
+      this.dispatchEvent(new MessageEvent('mediastream', {
+        data: mediaStream,
       }));
     };
 
@@ -368,7 +368,7 @@ class XRPeerConnection extends EventTarget {
       // console.log('data channel local open');
 
       this.open = true;
-      this.dispatchEvent(new CustomEvent('open'));
+      this.dispatchEvent(new MessageEvent('open'));
 
       /* pingInterval = setInterval(() => {
         sendChannel.send(JSON.stringify({
@@ -408,19 +408,11 @@ class XRPeerConnection extends EventTarget {
       channel.onmessage = e => {
         // console.log('data channel message', e.data);
 
-        const data = JSON.parse(e.data);
-        const {method} = data;
-        if (method === 'pose') {
-          this.dispatchEvent(new CustomEvent('pose', {
-            detail: data,
-          }))
-        /* } else if (method === 'ping') {
-          // nothing */
-        } else {
-          this.dispatchEvent(new MessageEvent('message', {
-            data: e.data,
-          }));
-        }
+        const j = JSON.parse(e.data);
+        const [method, data] = j;
+        this.dispatchEvent(new MessageEvent(method, {
+          data,
+        }));
 
         // _kick();
       };
@@ -434,7 +426,7 @@ class XRPeerConnection extends EventTarget {
     const _cleanup = () => {
       if (this.open) {
         this.open = false;
-        this.dispatchEvent(new CustomEvent('close'));
+        this.dispatchEvent(new MessageEvent('close'));
       }
       if (this.token !== -1) {
         clearTimeout(this.token);
@@ -453,17 +445,17 @@ class XRPeerConnection extends EventTarget {
     this.peerConnection.recvChannel && this.peerConnection.recvChannel.close();
   }
 
-  send(s) {
-    this.peerConnection.sendChannel.send(s);
+  send(method, data) {
+    this.peerConnection.sendChannel.send(JSON.stringify([method, data]));
   }
 
-  update(hmd, gamepads) {
+  /* update(hmd, gamepads) {
     this.send(JSON.stringify({
       method: 'pose',
       hmd,
       gamepads,
     }));
-  }
+  } */
 }
 
 export {

@@ -22,8 +22,8 @@
     <p>Click for FPS controls</p>
   </form>
 <script type=module>
-import THREE from 'https://metartc.com/three.module.js';
-import {makeId, XRChannelConnection} from 'https://metartc.com/multiplayer.js';
+import THREE from '../three.module.js';
+import {makeId, XRChannelConnection} from '../multiplayer.js';
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -69,7 +69,7 @@ let videoMediaStream = null;
 let currentSession = null;
 
 const _makeRig = () => {
-  const head = new THREE.Mesh(new THREE.BoxBufferGeometry(0.1, 0.1, 0.2), new THREE.MeshPhongMaterial({color: 0xef5350}));
+  const head = new THREE.Mesh(new THREE.BoxBufferGeometry(0.1, 0.05, 0.2), new THREE.MeshPhongMaterial({color: 0xef5350}));
   const leftHand = new THREE.Mesh(new THREE.BoxBufferGeometry(0.05, 0.01, 0.1), new THREE.MeshPhongMaterial({color: 0x66bb6a}));
   const rightHand = new THREE.Mesh(new THREE.BoxBufferGeometry(0.05, 0.01, 0.1), new THREE.MeshPhongMaterial({color: 0x42a5f5}));
   return {
@@ -78,7 +78,26 @@ const _makeRig = () => {
     rightHand,
   };
 };
+const _addRig = rig => {
+  scene.add(rig.head);
+  scene.add(rig.leftHand);
+  scene.add(rig.rightHand);
+};
+const _removeRig = rig => {
+  scene.remove(rig.head);
+  scene.remove(rig.leftHand);
+  scene.remove(rig.rightHand);
+};
+const _updateRig = (rig, head, leftHand, rightHand) => {
+  rig.head.position.fromArray(head.position);
+  rig.head.quaternion.fromArray(head.quaternion);
+  rig.leftHand.position.fromArray(leftHand.position);
+  rig.leftHand.quaternion.fromArray(leftHand.quaternion);
+  rig.rightHand.position.fromArray(rightHand.position);
+  rig.rightHand.quaternion.fromArray(rightHand.quaternion);
+};
 const myRig = _makeRig();
+_addRig(myRig);
 
 // tools
 
@@ -183,24 +202,30 @@ const _connectMultiplayer = async rid => {
     // videoMediaStream,
   });
   channelConnection.addEventListener('peerconnection', e => {
-    const peerConnection = e.detail;
+    const peerConnection = e.data;
 
-    bindPeerConnection(peerConnection, container);
+    const playerRig = _makeRig();
 
     peerConnection.addEventListener('open', () => {
       peerConnections.push(peerConnection);
+      _addRig(playerRig);
     });
     peerConnection.addEventListener('close', () => {
       peerConnections.splice(peerConnections.indexOf(peerConnection), 1);
+      _removeRig(playerRig);
     });
-    peerConnection.addEventListener('screenshare', e => {
-      const mediaStream = e.detail;
+    peerConnection.addEventListener('pose', e => {
+      const [head, leftHand, rightHand] = e.data;
+      _updateRig(playerRig, head, leftHand, rightHand);
+    });
+    /* peerConnection.addEventListener('screenshare', e => {
+      const mediaStream = e.data;
       console.log('got screen share media stream', mediaStream);
 
       const video = document.createElement('video');
       video.srcObject = mediaStream;
       video.play();
-    });
+    }); */
   });
 };
 const _disconnectMultiplayer = async () => {
@@ -254,18 +279,30 @@ function animate() {
   // update local player
   myRig.head.position.copy(camera.position);
   myRig.head.quaternion.copy(camera.quaternion);
-  myRig.leftHand.position.copy(camera.position).add(new THREE.Vector3(-0.1, -0.5, -0.1).applyQuaternion(camera.quaternion));
+  myRig.leftHand.position.copy(camera.position).add(new THREE.Vector3(-0.1, -0.3, -0.1).applyQuaternion(camera.quaternion));
   myRig.leftHand.quaternion.copy(camera.quaternion);
-  myRig.rightHand.position.copy(camera.position).add(new THREE.Vector3(0.1, -0.5, -0.1).applyQuaternion(camera.quaternion));
+  myRig.rightHand.position.copy(camera.position).add(new THREE.Vector3(0.1, -0.3, -0.1).applyQuaternion(camera.quaternion));
   myRig.rightHand.quaternion.copy(camera.quaternion);
 
-  // write local player to network
-  // XXX
-
-  // read remote players from network
-  for (let i = 0; i < peerConnections.length; i++) {
-    const peerConnection = peerConnections[i];
-    // peerConnection.rig && peerConnection.rig.update();
+  // send pose to other players
+  if (peerConnections.length > 0) {
+    const pose = [
+      {
+        position: myRig.head.position.toArray(),
+        quaternion: myRig.head.quaternion.toArray(),
+      },
+      {
+        position: myRig.leftHand.position.toArray(),
+        quaternion: myRig.leftHand.quaternion.toArray(),
+      },
+      {
+        position: myRig.rightHand.position.toArray(),
+        quaternion: myRig.rightHand.quaternion.toArray(),
+      },
+    ];
+    for (let i = 0; i < peerConnections.length; i++) {
+      peerConnections[i].send('pose', pose);
+    }
   }
 
   renderer.render(scene, camera);
