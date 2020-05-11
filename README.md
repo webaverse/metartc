@@ -72,7 +72,7 @@ Forcefully closes the `XRPeerConnection`. Both ends will get a `close` event.
 
 Emitted on the peer connection opening for data transfer.
 
-#### `'open' event`
+#### `'close' event`
 
 Emitted on the `XRPeerConnection` closing. Do not use the connection after this event.
 
