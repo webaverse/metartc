@@ -23,7 +23,7 @@
   </form>
 <script type=module>
 import THREE from '../three.module.js';
-import {makeId, XRChannelConnection} from '../multiplayer.js';
+import {XRChannelConnection} from '../multiplayer.js';
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -195,9 +195,7 @@ window.addEventListener('mousemove', e => {
 let channelConnection = null;
 const peerConnections = [];
 let microphoneMediaStream = null;
-const _connectMultiplayer = async rid => {
-  const roomId = rid || makeId();
-
+const _connectMultiplayer = async roomId => {
   channelConnection = new XRChannelConnection(`wss://presence.exokit.org/?c=${encodeURIComponent(roomId)}`, {
     // videoMediaStream,
   });

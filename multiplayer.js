@@ -459,7 +459,6 @@ class XRPeerConnection extends EventTarget {
 }
 
 export {
-  makeId,
   XRChannelConnection,
   XRPeerConnection,
 };
