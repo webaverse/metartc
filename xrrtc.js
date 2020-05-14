@@ -259,7 +259,7 @@ class XRChannelConnection extends EventTarget {
     }, 30*1000);
   }
 
-  disconnect() {
+  close() {
     this.rtcWs.close();
     this.rtcWs = null;
 
