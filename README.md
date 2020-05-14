@@ -11,7 +11,7 @@ The presence server is [here](https://github.com/exokitxr/exokit-backend).
 To use the API, first import the script:
 
 ```
-import {XRChannelConnection} from 'https://raw.githack.com/webaverse/metartc/doc/xrrtc.js';
+import {XRChannelConnection} from 'https://raw.githack.com/webaverse/metartc/master/xrrtc.js';
 ```
 
 Alternatively, you can clone the repo and include the files in your project.
