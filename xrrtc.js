@@ -234,7 +234,7 @@ class XRChannelConnection extends EventTarget {
         _removePeerConnection(peerConnectionId);
       } else {
         this.dispatchEvent(new MessageEvent('message', {
-          data: e.data,
+          data: JSON.parse(e.data),
         }));
       }
     };
