@@ -23,6 +23,7 @@ class XRChannelConnection extends EventTarget {
     this.peerConnections = [];
     this.microphoneMediaStream = options.microphoneMediaStream;
     this.videoMediaStream = options.videoMediaStream;
+    this.open = true;
 
     this.rtcWs.onopen = () => {
       // console.log('presence socket open');
@@ -242,7 +243,10 @@ class XRChannelConnection extends EventTarget {
       clearInterval(pingInterval);
       console.log('rtc ws got close');
 
-      this.dispatchEvent(new MessageEvent('close'));
+      if (this.open) {
+        this.open = false;
+        this.dispatchEvent(new MessageEvent('close'));
+      }
     };
     this.rtcWs.onerror = err => {
       console.warn('rtc error', err);
@@ -260,6 +264,11 @@ class XRChannelConnection extends EventTarget {
   }
 
   close() {
+    if (this.open) {
+      this.open = false;
+      this.dispatchEvent(new MessageEvent('close'));
+    }
+
     this.rtcWs.close();
     this.rtcWs = null;
 
