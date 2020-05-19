@@ -355,7 +355,9 @@ class XRPeerConnection extends EventTarget {
     this.peerConnection = new RTCPeerConnection({
       iceServers: defaultIceServers,
     });
-    this.open = false;
+    this.open = true;
+    this.sendChannelOpen = false;
+    this.queue = [];
 
     /* this.peerConnection.onaddstream = e => {
       this.dispatchEvent(new MessageEvent('mediastream', {
@@ -374,19 +376,18 @@ class XRPeerConnection extends EventTarget {
     this.peerConnection.sendChannel = sendChannel;
     let pingInterval = 0;
     sendChannel.onopen = () => {
-      // console.log('data channel local open');
-
-      this.open = true;
-      this.dispatchEvent(new MessageEvent('open'));
-
-      /* pingInterval = setInterval(() => {
-        sendChannel.send(JSON.stringify({
-          method: 'ping',
-        }));
-      }, 1000); */
+      this.sendChannelOpen = true;
+      const queue = this.queue.slice();
+      this.queue.length = 0;
+      for (let i = 0; i < queue.length; i++) {
+        const [method, data] = queue[i];
+        this.send(method, data);
+      }
     };
     sendChannel.onclose = () => {
       console.log('send channel got close');
+
+      this.sendChannelOpen = false;
 
       _cleanup();
     };
@@ -455,7 +456,11 @@ class XRPeerConnection extends EventTarget {
   }
 
   send(method, data) {
-    this.peerConnection.sendChannel.send(JSON.stringify([method, data]));
+    if (this.sendChannelOpen) {
+      this.peerConnection.sendChannel.send(JSON.stringify([method, data]));
+    } else {
+      this.queue.push([method, data]);
+    }
   }
 
   /* update(hmd, gamepads) {
