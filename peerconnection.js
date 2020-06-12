@@ -119,41 +119,39 @@ export function bindPeerConnection(peerConnection, container) {
   peerConnection.microphoneMediaStream = null;
   peerConnection.screenshareMediaStream = null;
   let updateInterval = 0;
-  peerConnection.addEventListener('open', () => {
-    console.log('peer connection open', peerConnection);
 
-    peerConnection.send(JSON.stringify({
-      method: 'model',
-      url: modelUrl,
-    }));
+  peerConnection.send(JSON.stringify({
+    method: 'model',
+    url: modelUrl,
+  }));
 
-    updateInterval = setInterval(() => {
-      if (rig) {
-        const hmd = {
-          position: localVector.copy(rig.inputs.hmd.position).divideScalar(heightFactor).toArray(),
-          quaternion: rig.inputs.hmd.quaternion.toArray(),
-          scaleFactor: rig.inputs.hmd.scaleFactor,
-        };
-        const gamepads = [
-          {
-            position: localVector.copy(rig.inputs.leftGamepad.position).divideScalar(heightFactor).toArray(),
-            quaternion: rig.inputs.leftGamepad.quaternion.toArray(),
-            pointer: rig.inputs.leftGamepad.pointer,
-            grip: rig.inputs.leftGamepad.grip,
-            visible: true,
-          },
-          {
-            position: localVector.copy(rig.inputs.rightGamepad.position).divideScalar(heightFactor).toArray(),
-            quaternion: rig.inputs.rightGamepad.quaternion.toArray(),
-            pointer: rig.inputs.rightGamepad.pointer,
-            grip: rig.inputs.rightGamepad.grip,
-            visible: true,
-          },
-        ];
-        peerConnection.update(hmd, gamepads);
-      }
-    }, peerPoseUpdateRate);
-  }, {once: true});
+  updateInterval = setInterval(() => {
+    if (rig) {
+      const hmd = {
+        position: localVector.copy(rig.inputs.hmd.position).divideScalar(heightFactor).toArray(),
+        quaternion: rig.inputs.hmd.quaternion.toArray(),
+        scaleFactor: rig.inputs.hmd.scaleFactor,
+      };
+      const gamepads = [
+        {
+          position: localVector.copy(rig.inputs.leftGamepad.position).divideScalar(heightFactor).toArray(),
+          quaternion: rig.inputs.leftGamepad.quaternion.toArray(),
+          pointer: rig.inputs.leftGamepad.pointer,
+          grip: rig.inputs.leftGamepad.grip,
+          visible: true,
+        },
+        {
+          position: localVector.copy(rig.inputs.rightGamepad.position).divideScalar(heightFactor).toArray(),
+          quaternion: rig.inputs.rightGamepad.quaternion.toArray(),
+          pointer: rig.inputs.rightGamepad.pointer,
+          grip: rig.inputs.rightGamepad.grip,
+          visible: true,
+        },
+      ];
+      peerConnection.update(hmd, gamepads);
+    }
+  }, peerPoseUpdateRate);
+
   peerConnection.addEventListener('close', () => {
     console.log('peer connection close', peerConnection);
 

@@ -25,11 +25,13 @@ class XRChannelConnection extends EventTarget {
     this.peerConnections = [];
     this.microphoneMediaStream = options.microphoneMediaStream;
     this.videoMediaStream = options.videoMediaStream;
+    this.dataChannel = null;
 
-    const _addPeerConnection = peerConnectionId => {
-      let peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
+    const _getPeerConnection = peerConnectionId => this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
+    const _addPeerConnection = (peerConnectionId, dataChannel) => {
+      let peerConnection = _getPeerConnection(peerConnectionId);
       if (!peerConnection) {
-        peerConnection = new XRPeerConnection(peerConnectionId);
+        peerConnection = new XRPeerConnection(peerConnectionId, dataChannel, this);
         /* peerConnection.token = this.connectionId < peerConnectionId ? -1 : 0;
         peerConnection.needsNegotiation = false;
         peerConnection.negotiating = false;
@@ -48,12 +50,16 @@ class XRChannelConnection extends EventTarget {
             peerConnection.needsNegotiation = true;
           }
         }; */
+        console.log('add peer connection', peerConnection);
+        this.peerConnections.push(peerConnection);
+        this.dispatchEvent(new CustomEvent('peerconnection', {
+          detail: peerConnection,
+        }));
       }
       return peerConnection;
     };
 
     const {roomName, displayName} = options;
-    let sendDataChannel = null;
     const dialogClient = new RoomClient({
       url: `${url}?roomId=${roomName}&peerId=${this.connectionId}`,
       displayName,
@@ -72,29 +78,35 @@ class XRChannelConnection extends EventTarget {
           _dataChannel.addEventListener('open', _open);
         });
       }
-      sendDataChannel = _dataChannel;
+      _dataChannel.addEventListener('message', e => {
+        console.log('got send data', e);
+      });
+      this.dataChannel = _dataChannel;
       // console.log('sending...');
       // _dataChannel.send('lol');
     });
     dialogClient.addEventListener('removesend', e => {
       const {data: {dataProducer: {id, _dataChannel}}} = e;
       console.log('remove send', _dataChannel);
-      sendDataChannel = null;
+      this.dataChannel = null;
     });
     dialogClient.addEventListener('addreceive', e => {
-      const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
-      console.log('add data reveive', peerId, _dataChannel);
+      const {data: {peerId, label, dataConsumer: {id, _dataChannel}}} = e;
+      console.log('add data receive', peerId, label, _dataChannel);
       /* _dataChannel.addEventListener('message', e => {
         console.log('got data message', peerId, e);
       }); */
       if (peerId) {
-        const peerConnection = _addPeerConnection(peerId);
-        peerConnection.setDataChannel(_dataChannel);
+        const peerConnection = _addPeerConnection(peerId, _dataChannel);
+        _dataChannel.addEventListener('message', e => {
+          console.log('receive message', e);
+        });
+        // peerConnection.setDataChannel(_dataChannel);
       }
     });
     dialogClient.addEventListener('removereceive', e => {
-      const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
-      console.log('remove data receive', peerId, _dataChannel);
+      const {data: {peerId, label, dataConsumer: {id, _dataChannel}}} = e;
+      console.log('remove data receive', peerId, label, _dataChannel);
 
       if (peerId) {
         _removePeerConnection(peerId);
@@ -104,16 +116,24 @@ class XRChannelConnection extends EventTarget {
       const {data: {peerId, consumer: {id, _track}}} = e;
       console.log('add receive stream', peerId, _track);
       if (peerId) {
-        const peerConnection = _addPeerConnecation(peerId);
-        peerConnection.addTrack(_track);
+        const peerConnection = _getPeerConnection(peerId);
+        if (peerConnection) {
+          peerConnection.addTrack(_track);
+        } else {
+          console.warn('no peer connection with id', peerId);
+        }
       }
     });
     dialogClient.addEventListener('removereceivestream', e => {
       const {data: {peerId, consumer: {id, _track}}} = e;
       console.log('remove receive stream', peerId, _track);
       if (peerId) {
-        const peerConnection = _addPeerConnection(peerId);
-        peerConnection.removeTrack(_track);
+        const peerConnection = _getPeerConnection(peerId);
+        if (peerConnection) {
+          peerConnection.removeTrack(_track);
+        } else {
+          console.warn('no peer connection with id', peerId);
+        }
       }
     });
 
@@ -369,7 +389,8 @@ class XRChannelConnection extends EventTarget {
   }
 
   send(s) {
-    this.rtcWs.send(s);
+    // console.log('channel connection send', this.dataChannel, s);
+    this.dataChannel.send(s);
   }
 
   update(hmd, gamepads) {
@@ -437,10 +458,12 @@ class XRChannelConnection extends EventTarget {
 }
 
 class XRPeerConnection extends EventTarget {
-  constructor(peerConnectionId) {
+  constructor(peerConnectionId, dataChannel, channelConnection) {
     super();
 
     this.connectionId = peerConnectionId;
+    this.dataChannel = dataChannel;
+    this.channelConnection = channelConnection;
     this.open = false;
 
     /* this.peerConnection.ontrack = e => {
@@ -518,13 +541,14 @@ class XRPeerConnection extends EventTarget {
     }; */
   }
   close() {
-    this.peerConnection.close();
+    /* this.peerConnection.close();
     this.peerConnection.sendChannel && this.peerConnection.sendChannel.close();
-    this.peerConnection.recvChannel && this.peerConnection.recvChannel.close();
+    this.peerConnection.recvChannel && this.peerConnection.recvChannel.close(); */
+    this.open = false;
   }
 
   setDataChannel(dataChannel) {
-    console.log('set data channel', dataChannel);
+    this.dataChannel = dataChannel;
   }
   addTrack(track) {
     console.log('add track', track);
@@ -534,7 +558,8 @@ class XRPeerConnection extends EventTarget {
   }
 
   send(s) {
-    this.peerConnection.sendChannel.send(s);
+    // console.log('peer connection send', this.dataChannel, s);
+    this.channelConnection.dataChannel.send(s);
   }
 
   update(hmd, gamepads) {

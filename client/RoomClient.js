@@ -517,6 +517,7 @@ export default class RoomClient extends EventTarget
 								this.dispatchEvent(new MessageEvent('addreceive', {
 									data: {
 										peerId,
+										label,
 									    dataConsumer,
 									},
 								}));
@@ -531,6 +532,7 @@ export default class RoomClient extends EventTarget
 								this.dispatchEvent(new MessageEvent('removereceive', {
 									data: {
 										peerId,
+										label,
 									    dataConsumer,
 									},
 								}));
