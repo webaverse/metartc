@@ -34,7 +34,7 @@ class XRChannelConnection extends EventTarget {
     });
     dialogClient.addEventListener('addsend', async e => {
       const {data: {dataProducer: {id, _dataChannel}}} = e;
-      console.log('add send', id, _dataChannel, _dataChannel.readyState);
+      console.log('add send', _dataChannel);
       if (_dataChannel.readyState !== 'open') {
         await new Promise((accept, reject) => {
           const _open = e => {
@@ -46,17 +46,12 @@ class XRChannelConnection extends EventTarget {
           _dataChannel.addEventListener('open', _open);
         });
       }
-      /* _dataChannel.addEventListener('open', e => {
-        console.log('send open', e); */
-        // setInterval(() => {
       console.log('sending...');
-          _dataChannel.send('lol');
-        // }, 1000);
-      // });
+      _dataChannel.send('lol');
     });
     dialogClient.addEventListener('removesend', e => {
       const {data: {dataProducer: {id, _dataChannel}}} = e;
-      console.log('remove send', id, _dataChannel);
+      console.log('remove send', _dataChannel);
     });
     dialogClient.addEventListener('addreceive', e => {
       const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
