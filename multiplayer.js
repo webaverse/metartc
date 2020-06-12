@@ -20,14 +20,40 @@ class XRChannelConnection extends EventTarget {
   constructor(url, options = {}) {
     super();
 
-    this.rtcWs = new WebSocket(url);
+    // this.rtcWs = new WebSocket(url);
     this.connectionId = makeId();
     this.peerConnections = [];
     this.microphoneMediaStream = options.microphoneMediaStream;
     this.videoMediaStream = options.videoMediaStream;
 
-    const {roomName, displayName} = options;
+    const _addPeerConnection = peerConnectionId => {
+      let peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
+      if (!peerConnection) {
+        peerConnection = new XRPeerConnection(peerConnectionId);
+        /* peerConnection.token = this.connectionId < peerConnectionId ? -1 : 0;
+        peerConnection.needsNegotiation = false;
+        peerConnection.negotiating = false;
+        peerConnection.peerConnection.onnegotiationneeded = e => {
+          console.log('negotiation needed', peerConnection.token, peerConnection.negotiating);
+          if (peerConnection.token !== 0 && !peerConnection.negotiating) {
+            if (peerConnection.token !== -1) {
+              clearTimeout(peerConnection.token);
+              peerConnection.token = -1;
+            }
+            peerConnection.needsNegotiation = false;
+            peerConnection.negotiating = true;
 
+            _startOffer(peerConnection);
+          } else {
+            peerConnection.needsNegotiation = true;
+          }
+        }; */
+      }
+      return peerConnection;
+    };
+
+    const {roomName, displayName} = options;
+    let sendDataChannel = null;
     const dialogClient = new RoomClient({
       url: `${url}?roomId=${roomName}&peerId=${this.connectionId}`,
       displayName,
@@ -46,31 +72,49 @@ class XRChannelConnection extends EventTarget {
           _dataChannel.addEventListener('open', _open);
         });
       }
-      console.log('sending...');
-      _dataChannel.send('lol');
+      sendDataChannel = _dataChannel;
+      // console.log('sending...');
+      // _dataChannel.send('lol');
     });
     dialogClient.addEventListener('removesend', e => {
       const {data: {dataProducer: {id, _dataChannel}}} = e;
       console.log('remove send', _dataChannel);
+      sendDataChannel = null;
     });
     dialogClient.addEventListener('addreceive', e => {
       const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
-      console.log('add data consumer', peerId, _dataChannel);
-      _dataChannel.addEventListener('message', e => {
+      console.log('add data reveive', peerId, _dataChannel);
+      /* _dataChannel.addEventListener('message', e => {
         console.log('got data message', peerId, e);
-      });
+      }); */
+      if (peerId) {
+        const peerConnection = _addPeerConnection(peerId);
+        peerConnection.setDataChannel(_dataChannel);
+      }
     });
     dialogClient.addEventListener('removereceive', e => {
       const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
-      console.log('add data consumer', peerId, _dataChannel);
+      console.log('remove data receive', peerId, _dataChannel);
+
+      if (peerId) {
+        _removePeerConnection(peerId);
+      }
     });
     dialogClient.addEventListener('addreceivestream', e => {
       const {data: {peerId, consumer: {id, _track}}} = e;
       console.log('add receive stream', peerId, _track);
+      if (peerId) {
+        const peerConnection = _addPeerConnecation(peerId);
+        peerConnection.addTrack(_track);
+      }
     });
     dialogClient.addEventListener('removereceivestream', e => {
       const {data: {peerId, consumer: {id, _track}}} = e;
       console.log('remove receive stream', peerId, _track);
+      if (peerId) {
+        const peerConnection = _addPeerConnection(peerId);
+        peerConnection.removeTrack(_track);
+      }
     });
 
     (async () => {
@@ -397,18 +441,9 @@ class XRPeerConnection extends EventTarget {
     super();
 
     this.connectionId = peerConnectionId;
-
-    this.peerConnection = new RTCPeerConnection({
-      iceServers: defaultIceServers,
-    });
     this.open = false;
 
-    /* this.peerConnection.onaddstream = e => {
-      this.dispatchEvent(new CustomEvent('mediastream', {
-        detail: e.stream,
-      }));
-    }; */
-    this.peerConnection.ontrack = e => {
+    /* this.peerConnection.ontrack = e => {
       const mediaStream = new MediaStream();
       mediaStream.addTrack(e.track);
       this.dispatchEvent(new CustomEvent('mediastream', {
@@ -424,12 +459,6 @@ class XRPeerConnection extends EventTarget {
 
       this.open = true;
       this.dispatchEvent(new CustomEvent('open'));
-
-      /* pingInterval = setInterval(() => {
-        sendChannel.send(JSON.stringify({
-          method: 'ping',
-        }));
-      }, 1000); */
     };
     sendChannel.onclose = () => {
       console.log('send channel got close');
@@ -439,17 +468,6 @@ class XRPeerConnection extends EventTarget {
     sendChannel.onerror = err => {
       // console.log('data channel local error', err);
     };
-    /* let watchdogTimeout = 0;
-    const _kick = () => {
-      if (watchdogTimeout) {
-        clearTimeout(watchdogTimeout);
-        watchdogTimeout = 0;
-      }
-      watchdogTimeout = setTimeout(() => {
-        this.peerConnection.close();
-      }, 5000);
-    };
-    _kick(); */
     this.peerConnection.ondatachannel = e => {
       const {channel} = e;
       // console.log('data channel remote open', channel);
@@ -469,8 +487,6 @@ class XRPeerConnection extends EventTarget {
           this.dispatchEvent(new CustomEvent('pose', {
             detail: data,
           }))
-        /* } else if (method === 'ping') {
-          // nothing */
         } else {
           this.dispatchEvent(new MessageEvent('message', {
             data: e.data,
@@ -499,13 +515,22 @@ class XRPeerConnection extends EventTarget {
         clearInterval(pingInterval);
         pingInterval = 0;
       }
-    };
+    }; */
   }
-
   close() {
     this.peerConnection.close();
     this.peerConnection.sendChannel && this.peerConnection.sendChannel.close();
     this.peerConnection.recvChannel && this.peerConnection.recvChannel.close();
+  }
+
+  setDataChannel(dataChannel) {
+    console.log('set data channel', dataChannel);
+  }
+  addTrack(track) {
+    console.log('add track', track);
+  }
+  removeTrack(track) {
+    console.log('remove track', track);
   }
 
   send(s) {
