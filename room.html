@@ -121,6 +121,7 @@ import address from 'https://contracts.webaverse.com/address.js';
 import abi from 'https://contracts.webaverse.com/abi.js';
 
 const apiHost = `https://ipfs.exokit.org/ipfs`;
+const presenceHost = 'wss://rtc.exokit.org:4443';
 const network = 'rinkeby';
 const infuraApiKey = '4fb939301ec543a0969f3019d74f80c2';
 const rpcUrl = `https://${network}.infura.io/v3/${infuraApiKey}`;
@@ -1055,9 +1056,11 @@ scene.add(rayMesh);
 let channelConnection = null;
 const peerConnections = [];
 const _connectMultiplayer = async rid => {
-  const roomId = rid || makeId();
+  const roomName = rid || makeId();
 
-  channelConnection = new XRChannelConnection(`wss://presence.exokit.org/?c=${encodeURIComponent(roomId)}`, {
+  channelConnection = new XRChannelConnection(`${presenceHost}/`, {
+    roomName,
+    displayName: 'user',
     videoMediaStream,
   });
   channelConnection.addEventListener('peerconnection', e => {
@@ -1089,9 +1092,9 @@ const _connectMultiplayer = async rid => {
     });
   });
 
-  document.getElementById('room-code-text').innerText = roomId;
-  wristUiMesh.setText(roomId);
-  const href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${roomId}`;
+  document.getElementById('room-code-text').innerText = roomName;
+  wristUiMesh.setText(roomName);
+  const href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${roomName}`;
   document.getElementById('room-link').href = href;
 
   history.replaceState(null, '', href);

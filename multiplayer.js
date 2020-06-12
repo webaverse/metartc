@@ -1,7 +1,9 @@
-const defaultIceServers = [
+import RoomClient from './client/RoomClient.js';
+
+/* const defaultIceServers = [
   {'urls': 'stun:stun.stunprotocol.org:3478'},
   {'urls': 'stun:stun.l.google.com:19302'},
-];
+]; */
 
 const roomAlphabetStartIndex = 'A'.charCodeAt(0);
 const roomAlphabetEndIndex = 'Z'.charCodeAt(0)+1;
@@ -24,7 +26,69 @@ class XRChannelConnection extends EventTarget {
     this.microphoneMediaStream = options.microphoneMediaStream;
     this.videoMediaStream = options.videoMediaStream;
 
-    this.rtcWs.onopen = () => {
+    const {roomName, displayName} = options;
+
+    const dialogClient = new RoomClient({
+      url: `${url}?roomId=${roomName}&peerId=${this.connectionId}`,
+      displayName,
+    });
+    dialogClient.addEventListener('addsend', async e => {
+      const {data: {dataProducer: {id, _dataChannel}}} = e;
+      console.log('add send', id, _dataChannel, _dataChannel.readyState);
+      if (_dataChannel.readyState !== 'open') {
+        await new Promise((accept, reject) => {
+          const _open = e => {
+            accept();
+
+            // _dataChannel.flushMessageQueue();
+            _dataChannel.removeEventListener('open', _open);
+          };
+          _dataChannel.addEventListener('open', _open);
+        });
+      }
+      /* _dataChannel.addEventListener('open', e => {
+        console.log('send open', e); */
+        // setInterval(() => {
+      console.log('sending...');
+          _dataChannel.send('lol');
+        // }, 1000);
+      // });
+    });
+    dialogClient.addEventListener('removesend', e => {
+      const {data: {dataProducer: {id, _dataChannel}}} = e;
+      console.log('remove send', id, _dataChannel);
+    });
+    dialogClient.addEventListener('addreceive', e => {
+      const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
+      console.log('add data consumer', peerId, _dataChannel);
+      _dataChannel.addEventListener('message', e => {
+        console.log('got data message', peerId, e);
+      });
+    });
+    dialogClient.addEventListener('removereceive', e => {
+      const {data: {peerId, dataConsumer: {id, _dataChannel}}} = e;
+      console.log('add data consumer', peerId, _dataChannel);
+    });
+    dialogClient.addEventListener('addreceivestream', e => {
+      const {data: {peerId, consumer: {id, _track}}} = e;
+      console.log('add receive stream', peerId, _track);
+    });
+    dialogClient.addEventListener('removereceivestream', e => {
+      const {data: {peerId, consumer: {id, _track}}} = e;
+      console.log('remove receive stream', peerId, _track);
+    });
+
+    (async () => {
+      console.log('join 1');
+      await dialogClient.join();
+      console.log('join 2');
+      await dialogClient.enableChatDataProducer();
+      // await dialogClient.enableMic();
+      // await dialogClient.enableWebcam();
+      console.log('join 3');
+    })();
+
+    /* this.rtcWs.onopen = () => {
       // console.log('presence socket open');
 
       this.rtcWs.send(JSON.stringify({
@@ -36,10 +100,6 @@ class XRChannelConnection extends EventTarget {
     };
     const _addPeerConnection = peerConnectionId => {
       let peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
-      /* if (peerConnection && !peerConnection.open) {
-        peerConnection.close();
-        peerConnection = null;
-      } */
       if (!peerConnection) {
         peerConnection = new XRPeerConnection(peerConnectionId);
         peerConnection.token = this.connectionId < peerConnectionId ? -1 : 0;
@@ -256,7 +316,7 @@ class XRChannelConnection extends EventTarget {
       this.rtcWs.send(JSON.stringify({
         method: 'ping',
       }));
-    }, 30*1000);
+    }, 30*1000); */
   }
 
   disconnect() {
