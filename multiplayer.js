@@ -99,7 +99,14 @@ class XRChannelConnection extends EventTarget {
       if (peerId) {
         const peerConnection = _addPeerConnection(peerId, _dataChannel);
         _dataChannel.addEventListener('message', e => {
-          console.log('receive message', e);
+          // console.log('receive message', e);
+          const j = JSON.parse(e.data);
+          const {dst} = j;
+          if (dst === this.connectionId) {
+            peerConnection.dispatchEvent(new MessageEvent('message', {
+              data: j,
+            }));
+          }
         });
         // peerConnection.setDataChannel(_dataChannel);
       }
@@ -565,6 +572,7 @@ class XRPeerConnection extends EventTarget {
   update(hmd, gamepads) {
     this.send(JSON.stringify({
       method: 'pose',
+      dst: this.connectionId,
       hmd,
       gamepads,
     }));

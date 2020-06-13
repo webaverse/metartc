@@ -161,7 +161,7 @@ export function bindPeerConnection(peerConnection, container) {
       container.remove(peerConnection.rig.model);
     }
   }, {once: true});
-  peerConnection.addEventListener('pose', e => {
+  /* peerConnection.addEventListener('pose', e => {
     const {rig} = peerConnection;
     if (rig) {
       const {detail: data} = e;
@@ -192,7 +192,7 @@ export function bindPeerConnection(peerConnection, container) {
       rig.targets.gamepads[1].grip = gamepads[1].grip;
       rig.targets.timestamp = Date.now();
     }
-  });
+  }); */
   peerConnection.addEventListener('mediastream', e => {
     const audioTracks = e.detail.getAudioTracks();
     if (audioTracks.length > 0) {
@@ -216,7 +216,8 @@ export function bindPeerConnection(peerConnection, container) {
     }
   });
   peerConnection.addEventListener('message', async e => {
-    const data = JSON.parse(e.data);
+    // const data = JSON.parse(e.data);
+    const {data} = e;
     const {method} = data;
     if (method === 'username') {
       const {name} = data;
@@ -225,6 +226,39 @@ export function bindPeerConnection(peerConnection, container) {
       /* if (peerConnection.rig && peerConnection.rig.nametagMesh) {
         peerConnection.rig.nametagMesh.setName(name);
       } */
+    } else if (method === 'pose') {
+      const {rig} = peerConnection;
+      if (rig) {
+        // const {detail: data} = e;
+        const {hmd, gamepads} = data;
+
+        rig.starts.hmd.position.copy(peerConnection.rig.inputs.hmd.position);
+        rig.starts.hmd.rotation.copy(peerConnection.rig.inputs.hmd.quaternion);
+        rig.starts.hmd.scaleFactor = peerConnection.rig.inputs.hmd.scaleFactor;
+        rig.starts.gamepads[0].position.copy(peerConnection.rig.inputs.leftGamepad.position);
+        rig.starts.gamepads[0].rotation.copy(peerConnection.rig.inputs.leftGamepad.quaternion);
+        rig.starts.gamepads[0].pointer = peerConnection.rig.inputs.leftGamepad.pointer;
+        rig.starts.gamepads[0].grip = peerConnection.rig.inputs.leftGamepad.grip;
+        rig.starts.gamepads[1].position.copy(peerConnection.rig.inputs.rightGamepad.position);
+        rig.starts.gamepads[1].rotation.copy(peerConnection.rig.inputs.rightGamepad.quaternion);
+        rig.starts.gamepads[1].pointer = peerConnection.rig.inputs.rightGamepad.pointer;
+        rig.starts.gamepads[1].grip = peerConnection.rig.inputs.rightGamepad.grip;
+
+        rig.targets.hmd.position.fromArray(hmd.position);
+        rig.targets.hmd.rotation.fromArray(hmd.quaternion);
+        rig.targets.hmd.scaleFactor = hmd.scaleFactor;
+        rig.targets.gamepads[0].position.fromArray(gamepads[0].position);
+        rig.targets.gamepads[0].rotation.fromArray(gamepads[0].quaternion);
+        rig.targets.gamepads[0].pointer = gamepads[0].pointer;
+        rig.targets.gamepads[0].grip = gamepads[0].grip;
+        rig.targets.gamepads[1].position.fromArray(gamepads[1].position);
+        rig.targets.gamepads[1].rotation.fromArray(gamepads[1].quaternion);
+        rig.targets.gamepads[1].pointer = gamepads[1].pointer;
+        rig.targets.gamepads[1].grip = gamepads[1].grip;
+        rig.targets.timestamp = Date.now();
+      } else {
+        console.log('got pose for no rig', data);
+      }
     } else if (method === 'model') {
       const {url} = data;
       console.log('got peer model', {url});
