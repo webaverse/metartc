@@ -116,7 +116,7 @@ import {GLTFLoader} from './GLTFLoader.js';
 // import {GLTFExporter} from './GLTFExporter.js';
 // import {XRControllerModelFactory} from './XRControllerModelFactory.js';
 import {makeId, XRChannelConnection} from './multiplayer.js';
-import {initLocalRig, updatePlayerFromCamera, updatePlayerFromXr, updatePlayerFromArrays, updatePlayerDefault, getRigBoneTexture, bindPeerConnection} from './peerconnection.js';
+import {initLocalRig, updatePlayerFromCamera, updatePlayerFromXr, updatePlayerFromArrays, updatePlayerDefault, getRigBoneTexture, bindChannelConnection, bindPeerConnection} from './peerconnection.js';
 import address from 'https://contracts.webaverse.com/address.js';
 import abi from 'https://contracts.webaverse.com/abi.js';
 
@@ -1063,15 +1063,16 @@ const _connectMultiplayer = async rid => {
     displayName: 'user',
     videoMediaStream,
   });
+  bindChannelConnection(channelConnection);
   channelConnection.addEventListener('peerconnection', e => {
     const peerConnection = e.detail;
 
     bindPeerConnection(peerConnection, container);
 
-    peerConnection.addEventListener('open', () => {
+    // peerConnection.addEventListener('open', () => {
       peerConnections.push(peerConnection);
       document.getElementById('user-count-text').innerText = peerConnections.length + 1;
-    });
+    // });
     peerConnection.addEventListener('close', () => {
       peerConnections.splice(peerConnections.indexOf(peerConnection), 1);
       document.getElementById('user-count-text').innerText = peerConnections.length + 1;

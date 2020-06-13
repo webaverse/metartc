@@ -27,6 +27,8 @@ class XRChannelConnection extends EventTarget {
     this.videoMediaStream = options.videoMediaStream;
     this.dataChannel = null;
 
+    console.log('local connection id', this.connectionId);
+
     const _getPeerConnection = peerConnectionId => this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
     const _addPeerConnection = (peerConnectionId, dataChannel) => {
       let peerConnection = _getPeerConnection(peerConnectionId);
@@ -58,6 +60,14 @@ class XRChannelConnection extends EventTarget {
       }
       return peerConnection;
     };
+    const _removePeerConnection = peerConnectionId => {
+      const index = this.peerConnections.findIndex(peerConnection => peerConnection.connectionId === peerConnectionId);
+      if (index !== -1) {
+        this.peerConnections.splice(index, 1)[0].close();
+      } else {
+        console.warn('no such peer connection', peerConnectionId, this.peerConnections.map(peerConnection => peerConnection.connectionId));
+      }
+    };
 
     const {roomName, displayName} = options;
     const dialogClient = new RoomClient({
@@ -82,8 +92,10 @@ class XRChannelConnection extends EventTarget {
         console.log('got send data', e);
       });
       this.dataChannel = _dataChannel;
-      // console.log('sending...');
-      // _dataChannel.send('lol');
+
+      this.dispatchEvent(new MessageEvent('open', {
+        data: {},
+      }));
     });
     dialogClient.addEventListener('removesend', e => {
       const {data: {dataProducer: {id, _dataChannel}}} = e;
@@ -102,11 +114,17 @@ class XRChannelConnection extends EventTarget {
           // console.log('receive message', e);
           const j = JSON.parse(e.data);
           const {dst} = j;
-          if (dst === this.connectionId) {
+          if (dst === null || dst === this.connectionId) {
             peerConnection.dispatchEvent(new MessageEvent('message', {
               data: j,
             }));
+          } else {
+            console.log('got message for wrong dst', j, this.connectionId);
+            // debugger;
           }
+        });
+        _dataChannel.addEventListener('close', e => {
+          _removePeerConnection(peerId);
         });
         // peerConnection.setDataChannel(_dataChannel);
       }
@@ -115,9 +133,9 @@ class XRChannelConnection extends EventTarget {
       const {data: {peerId, label, dataConsumer: {id, _dataChannel}}} = e;
       console.log('remove data receive', peerId, label, _dataChannel);
 
-      if (peerId) {
+      /* if (peerId) {
         _removePeerConnection(peerId);
-      }
+      } */
     });
     dialogClient.addEventListener('addreceivestream', e => {
       const {data: {peerId, consumer: {id, _track}}} = e;
@@ -395,18 +413,8 @@ class XRChannelConnection extends EventTarget {
     this.peerConnections.length = 0;
   }
 
-  /* send(s) {
-    // console.log('channel connection send', this.dataChannel, s);
+  send(s) {
     this.dataChannel.send(s);
-  } */
-
-  update(hmd, gamepads) {
-    for (let i = 0; i < this.peerConnections.length; i++) {
-      const peerConnection = this.peerConnections[i];
-      if (peerConnection.open) {
-        peerConnection.update(hmd, gamepads);
-      }
-    }
   }
 
   setMicrophoneMediaStream(microphoneMediaStream) {
@@ -471,7 +479,7 @@ class XRPeerConnection extends EventTarget {
     this.connectionId = peerConnectionId;
     this.dataChannel = dataChannel;
     this.channelConnection = channelConnection;
-    this.open = false;
+    this.open = true;
 
     /* this.peerConnection.ontrack = e => {
       const mediaStream = new MediaStream();
@@ -552,6 +560,9 @@ class XRPeerConnection extends EventTarget {
     this.peerConnection.sendChannel && this.peerConnection.sendChannel.close();
     this.peerConnection.recvChannel && this.peerConnection.recvChannel.close(); */
     this.open = false;
+    this.dispatchEvent(new MessageEvent('close', {
+      data: {},
+    }));
   }
 
   setDataChannel(dataChannel) {
@@ -562,20 +573,6 @@ class XRPeerConnection extends EventTarget {
   }
   removeTrack(track) {
     console.log('remove track', track);
-  }
-
-  send(s) {
-    // console.log('peer connection send', this.dataChannel, s);
-    this.channelConnection.dataChannel.send(s);
-  }
-
-  update(hmd, gamepads) {
-    this.send(JSON.stringify({
-      method: 'pose',
-      dst: this.connectionId,
-      hmd,
-      gamepads,
-    }));
   }
 }
 
