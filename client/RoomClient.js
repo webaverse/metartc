@@ -2021,19 +2021,19 @@ export default class RoomClient extends EventTarget
 
 			this._displayName = displayName;
 
-			store.dispatch(
+			/* store.dispatch(
 				stateActions.setDisplayName(displayName));
 
 			store.dispatch(requestActions.notify(
 				{
 					text : 'Display name changed'
-				}));
+				})); */
 		}
 		catch (error)
 		{
 			logger.error('changeDisplayName() | failed: %o', error);
 
-			store.dispatch(requestActions.notify(
+			/* store.dispatch(requestActions.notify(
 				{
 					type : 'error',
 					text : `Could not change display name: ${error}`
@@ -2042,7 +2042,7 @@ export default class RoomClient extends EventTarget
 			// We need to refresh the component for it to render the previous
 			// displayName again.
 			store.dispatch(
-				stateActions.setDisplayName());
+				stateActions.setDisplayName()); */
 		}
 	}
 
