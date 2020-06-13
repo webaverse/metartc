@@ -1782,7 +1782,7 @@ export default class RoomClient extends EventTarget
 			this._chatDataProducer = await this._sendTransport.produceData(
 				{
 					ordered        : true, // false,
-					maxRetransmits : 1,
+					// maxRetransmits : 1,
 					label          : 'chat',
 					priority       : 'medium',
 					appData        : { info: 'my-chat-DataProducer' }
@@ -1878,8 +1878,8 @@ export default class RoomClient extends EventTarget
 			// Create chat DataProducer.
 			this._botDataProducer = await this._sendTransport.produceData(
 				{
-					ordered           : false,
-					maxPacketLifeTime : 2000,
+					ordered           : true, // false,
+					// maxPacketLifeTime : 2000,
 					label             : 'bot',
 					priority          : 'medium',
 					appData           : { info: 'my-bot-DataProducer' }
