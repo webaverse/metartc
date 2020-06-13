@@ -388,10 +388,10 @@ class XRChannelConnection extends EventTarget {
     this.peerConnections.length = 0;
   }
 
-  send(s) {
+  /* send(s) {
     // console.log('channel connection send', this.dataChannel, s);
     this.dataChannel.send(s);
-  }
+  } */
 
   update(hmd, gamepads) {
     for (let i = 0; i < this.peerConnections.length; i++) {
