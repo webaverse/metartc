@@ -912,11 +912,11 @@ export default class RoomClient extends EventTarget
 
 			this._micProducer.on('trackended', () =>
 			{
-				store.dispatch(requestActions.notify(
+				/* store.dispatch(requestActions.notify(
 					{
 						type : 'error',
 						text : 'Microphone disconnected!'
-					}));
+					})); */
 
 				this.disableMic()
 					.catch(() => {});
@@ -926,11 +926,11 @@ export default class RoomClient extends EventTarget
 		{
 			logger.error('enableMic() | failed:%o', error);
 
-			store.dispatch(requestActions.notify(
+			/* store.dispatch(requestActions.notify(
 				{
 					type : 'error',
 					text : `Error enabling microphone: ${error}`
-				}));
+				})); */
 
 			if (track)
 				track.stop();
@@ -946,8 +946,8 @@ export default class RoomClient extends EventTarget
 
 		this._micProducer.close();
 
-		store.dispatch(
-			stateActions.removeProducer(this._micProducer.id));
+		/* store.dispatch(
+			stateActions.removeProducer(this._micProducer.id)); */
 
 		try
 		{
@@ -956,11 +956,11 @@ export default class RoomClient extends EventTarget
 		}
 		catch (error)
 		{
-			store.dispatch(requestActions.notify(
+			/* store.dispatch(requestActions.notify(
 				{
 					type : 'error',
 					text : `Error closing server-side mic Producer: ${error}`
-				}));
+				})); */
 		}
 
 		this._micProducer = null;
@@ -977,18 +977,18 @@ export default class RoomClient extends EventTarget
 			await this._protoo.request(
 				'pauseProducer', { producerId: this._micProducer.id });
 
-			store.dispatch(
-				stateActions.setProducerPaused(this._micProducer.id));
+			/* store.dispatch(
+				stateActions.setProducerPaused(this._micProducer.id)); */
 		}
 		catch (error)
 		{
 			logger.error('muteMic() | failed: %o', error);
 
-			store.dispatch(requestActions.notify(
+			/* store.dispatch(requestActions.notify(
 				{
 					type : 'error',
 					text : `Error pausing server-side mic Producer: ${error}`
-				}));
+				})); */
 		}
 	}
 
@@ -1003,18 +1003,18 @@ export default class RoomClient extends EventTarget
 			await this._protoo.request(
 				'resumeProducer', { producerId: this._micProducer.id });
 
-			store.dispatch(
-				stateActions.setProducerResumed(this._micProducer.id));
+			/* store.dispatch(
+				stateActions.setProducerResumed(this._micProducer.id)); */
 		}
 		catch (error)
 		{
 			logger.error('unmuteMic() | failed: %o', error);
 
-			store.dispatch(requestActions.notify(
+			/* store.dispatch(requestActions.notify(
 				{
 					type : 'error',
 					text : `Error resuming server-side mic Producer: ${error}`
-				}));
+				})); */
 		}
 	}
 
